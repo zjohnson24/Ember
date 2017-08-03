@@ -24,7 +24,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <openssl/crypto.h>
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <signal.h>
 #endif
 
@@ -295,7 +295,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     // Disable confusing "helpful" text message on abort, Ctrl-C
     _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 #endif
-#ifdef WIN32
+#ifdef _WIN32
     // Enable Data Execution Prevention (DEP)
     // Minimum supported OS versions: WinXP SP3, WinVista >= SP1, Win Server 2008
     // A failure is non-critical and needs no further attention!
@@ -308,7 +308,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     PSETPROCDEPPOL setProcDEPPol = (PSETPROCDEPPOL)GetProcAddress(GetModuleHandleA("Kernel32.dll"), "SetProcessDEPPolicy");
     if (setProcDEPPol != NULL) setProcDEPPol(PROCESS_DEP_ENABLE);
 #endif
-#ifndef WIN32
+#ifndef _WIN32
     umask(077);
 
     // Clean shutdown on SIGTERM
@@ -481,7 +481,7 @@ bool AppInit2(boost::thread_group& threadGroup)
         ShrinkDebugFile();
     LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
     LogPrintf("Ember version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
-    LogPrintf("Using OpenSSL version %s\n", SSLeay_version(SSLEAY_VERSION));
+    LogPrintf("Using LibreSSL version %s\n", SSLeay_version(SSLEAY_VERSION));
     if (!fLogTimestamps)
         LogPrintf("Startup time: %s\n", DateTimeStrFormat("%x %H:%M:%S", GetTime()));
     LogPrintf("Default data directory %s\n", GetDefaultDataDir().string());

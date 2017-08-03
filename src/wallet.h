@@ -20,10 +20,6 @@
 #include "ui_interface.h"
 #include "util.h"
 
-#ifdef _MSC_VER
-#pragma warning(disable : 4503)
-#endif
-
 // Settings
 extern int64_t nTransactionFee;
 extern int64_t nReserveBalance;
