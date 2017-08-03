@@ -152,9 +152,9 @@ public:
         bool ret;
         BIGNUM bn;
         BN_init(&bn);
-        ret = BN_bin2bn(vch, 32, &bn);
+        ret = (0 != BN_bin2bn(vch, 32, &bn));
         assert(ret);
-        ret = EC_KEY_regenerate_key(pkey, &bn);
+        ret = (0 != EC_KEY_regenerate_key(pkey, &bn));
         assert(ret);
         BN_clear_free(&bn);
     }
@@ -374,8 +374,6 @@ const unsigned char vchMaxModHalfOrder[32] = {
     0xDF,0xE9,0x2F,0x46,0x68,0x1B,0x20,0xA0
 };
 
-const unsigned char vchZero[0] = {};
-
 }; // end of anonymous namespace
 
 bool CKey::Check(const unsigned char *vch) {
@@ -403,7 +401,7 @@ bool CKey::Check(const unsigned char *vch) {
 }
 
 bool CKey::CheckSignatureElement(const unsigned char *vch, int len, bool half) {
-    return CompareBigEndian(vch, len, vchZero, 0) > 0 &&
+    return CompareBigEndian(vch, len, NULL, 0) > 0 &&
            CompareBigEndian(vch, len, half ? vchMaxModHalfOrder : vchMaxModOrder, 32) <= 0;
 }
 

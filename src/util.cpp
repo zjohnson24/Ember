@@ -104,11 +104,6 @@ public:
             ppmutexOpenSSL[i] = new CCriticalSection();
         CRYPTO_set_locking_callback(locking_callback);
 
-#ifdef WIN32
-        // Seed OpenSSL PRNG with current contents of the screen
-        RAND_screen();
-#endif
-
         // Seed OpenSSL PRNG with performance counter
         RandAddSeed();
     }
@@ -184,7 +179,7 @@ uint64_t GetRand(uint64_t nMax)
 
 int GetRandInt(int nMax)
 {
-    return GetRand(nMax);
+    return (int)GetRand(nMax);
 }
 
 uint256 GetRandHash()
@@ -1071,8 +1066,8 @@ void CreatePidFile(const boost::filesystem::path &path, pid_t pid)
 bool RenameOver(boost::filesystem::path src, boost::filesystem::path dest)
 {
 #ifdef WIN32
-    return MoveFileExA(src.string().c_str(), dest.string().c_str(),
-                      MOVEFILE_REPLACE_EXISTING);
+    return (bool)(0 != (MoveFileExA(src.string().c_str(), dest.string().c_str(),
+                      MOVEFILE_REPLACE_EXISTING)));
 #else
     int rc = std::rename(src.string().c_str(), dest.string().c_str());
     return (rc == 0);
