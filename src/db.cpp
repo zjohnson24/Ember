@@ -9,21 +9,21 @@
 #include "hash.h"
 #include "util.h"
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <sys/stat.h>
 #endif
 
 #include <boost/filesystem.hpp>
 #include <boost/version.hpp>
 #include <openssl/rand.h>
+#include <string.h>
+
 
 using namespace std;
 using namespace boost;
 
 
 unsigned int nWalletDBUpdated;
-
-
 
 //
 // CDB
@@ -37,15 +37,19 @@ void CDBEnv::EnvShutdown()
         return;
 
     fDbEnvInit = false;
-    int ret = dbenv.close(0);
+    int ret = dbenv->close(dbenv, 0);
     if (ret != 0)
-        LogPrintf("EnvShutdown exception: %s (%d)\n", DbEnv::strerror(ret), ret);
+        LogPrintf("EnvShutdown exception: %s (%d)\n", db_strerror(ret), ret);
     if (!fMockDb)
-        DbEnv((uint32_t)0).remove(strPath.c_str(), 0);
+		dbenv->close(dbenv, 0);
 }
 
-CDBEnv::CDBEnv() : dbenv(DB_CXX_NO_EXCEPTIONS)
-{
+CDBEnv::CDBEnv() {
+	int ret;
+	if ((ret = db_env_create(&dbenv, 0)) != 0) {
+		cerr << "db_env_create error:" << db_strerror(ret) << endl;
+		exit(1);
+	}
     fDbEnvInit = false;
     fMockDb = false;
 }
@@ -69,41 +73,42 @@ bool CDBEnv::Open(boost::filesystem::path pathEnv_)
 
     pathEnv = pathEnv_;
     filesystem::path pathDataDir = pathEnv;
-    strPath = pathDataDir.string();
+    strPath = pathDataDir.generic_string();
     filesystem::path pathLogDir = pathDataDir / "database";
     filesystem::create_directory(pathLogDir);
     filesystem::path pathErrorFile = pathDataDir / "db.log";
-    LogPrintf("dbenv.open LogDir=%s ErrorFile=%s\n", pathLogDir.string(), pathErrorFile.string());
+    LogPrintf("dbenv.open LogDir=%s ErrorFile=%s\n", pathLogDir.generic_string(), pathErrorFile.generic_string());
 
-    unsigned int nEnvFlags = 0;
-    if (GetBoolArg("-privdb", true))
-        nEnvFlags |= DB_PRIVATE;
+    //int nDbCache = GetArg("-dbcache", 25);
+	dbenv->set_lg_dir(dbenv, pathLogDir.generic_string().c_str());
+    //dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
+    //dbenv.set_lg_bsize(1048576);
+    //dbenv.set_lg_max(10485760);
+    //dbenv.set_lk_max_locks(10000);
+    //dbenv.set_lk_max_objects(10000);
+	dbenv->set_errfile(dbenv, fopen(pathErrorFile.generic_string().c_str(), "a")); /// debug
+//#ifdef DB_LOG_AUTO_REMOVE
+//	dbenv.log_set_config(DB_LOG_AUTO_REMOVE, 1);
+//#endif
+	const std::string& string_thing = pathDataDir.generic_string();
+	LogPrintf("string_thing: '%s'\n", string_thing);
 
-    int nDbCache = GetArg("-dbcache", 25);
-    dbenv.set_lg_dir(pathLogDir.string().c_str());
-    dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
-    dbenv.set_lg_bsize(1048576);
-    dbenv.set_lg_max(10485760);
-    dbenv.set_lk_max_locks(10000);
-    dbenv.set_lk_max_objects(10000);
-    dbenv.set_errfile(fopen(pathErrorFile.string().c_str(), "a")); /// debug
-    dbenv.set_flags(DB_AUTO_COMMIT, 1);
-    dbenv.set_flags(DB_TXN_WRITE_NOSYNC, 1);
-#ifdef DB_LOG_AUTO_REMOVE
-    dbenv.log_set_config(DB_LOG_AUTO_REMOVE, 1);
-#endif
-    int ret = dbenv.open(strPath.c_str(),
-                     DB_CREATE     |
-                     DB_INIT_LOCK  |
-                     DB_INIT_LOG   |
-                     DB_INIT_MPOOL |
-                     DB_INIT_TXN   |
-                     DB_THREAD     |
-                     DB_RECOVER    |
-                     nEnvFlags,
+	const char *str_p = string_thing.c_str();
+	LogPrintf("str_p: %s\n", str_p);
+
+    int ret = dbenv->open(dbenv, str_p,
+					 DB_CREATE      |
+                     DB_INIT_LOCK   |
+                     DB_INIT_LOG    |
+                     DB_INIT_MPOOL  |
+                     DB_INIT_TXN    |
+                     DB_THREAD      |
+                     DB_RECOVER     |
+				     DB_AUTO_COMMIT | 
+		             DB_PRIVATE,
                      S_IRUSR | S_IWUSR);
     if (ret != 0)
-        return error("CDB() : error %s (%d) opening database environment", DbEnv::strerror(ret), ret);
+        return error("CDB() : error %s (%d) opening database environment", db_strerror(ret), ret);
 
     fDbEnvInit = true;
     fMockDb = false;
@@ -120,22 +125,22 @@ void CDBEnv::MakeMock()
 
     LogPrint("db", "CDBEnv::MakeMock()\n");
 
-    dbenv.set_cachesize(1, 0, 1);
-    dbenv.set_lg_bsize(10485760*4);
-    dbenv.set_lg_max(10485760);
-    dbenv.set_lk_max_locks(10000);
-    dbenv.set_lk_max_objects(10000);
-    dbenv.set_flags(DB_AUTO_COMMIT, 1);
+    //dbenv.set_cachesize(1, 0, 1);
+    //dbenv.set_lg_bsize(10485760*4);
+    //dbenv.set_lg_max(10485760);
+    //dbenv.set_lk_max_locks(10000);
+    //dbenv.set_lk_max_objects(10000);
 #ifdef DB_LOG_IN_MEMORY
-    dbenv.log_set_config(DB_LOG_IN_MEMORY, 1);
+    dbenv->log_set_config(dbenv, DB_LOG_IN_MEMORY, 1);
 #endif
-    int ret = dbenv.open(NULL,
-                     DB_CREATE     |
-                     DB_INIT_LOCK  |
-                     DB_INIT_LOG   |
-                     DB_INIT_MPOOL |
-                     DB_INIT_TXN   |
-                     DB_THREAD     |
+    int ret = dbenv->open(dbenv, NULL,
+                     DB_CREATE      |
+                     DB_INIT_LOCK   |
+                     DB_INIT_LOG    |
+                     DB_INIT_MPOOL  |
+                     DB_INIT_TXN    |
+                     DB_THREAD      |
+					 DB_AUTO_COMMIT |
                      DB_PRIVATE,
                      S_IRUSR | S_IWUSR);
     if (ret > 0)
@@ -150,16 +155,74 @@ CDBEnv::VerifyResult CDBEnv::Verify(std::string strFile, bool (*recoverFunc)(CDB
     LOCK(cs_db);
     assert(mapFileUseCount.count(strFile) == 0);
 
-    Db db(&dbenv, 0);
-    int result = db.verify(strFile.c_str(), NULL, NULL, 0);
-    if (result == 0)
-        return VERIFY_OK;
-    else if (recoverFunc == NULL)
-        return RECOVER_FAIL;
+	DB *db = NULL;
+	int ret = db_create(&db, dbenv, 0);
+	if (ret != 0) {
+		LogPrintf("Verify Failed for: %s\n", strFile.c_str());
+		return RECOVER_FAIL;
+	}
+    int result = db->verify(db, strFile.c_str(), NULL, NULL, 0);
+	if (result == 0) {
+		return VERIFY_OK;
+	} else if (recoverFunc == NULL) {
+		return RECOVER_FAIL;
+	}
 
     // Try to recover:
     bool fRecovered = (*recoverFunc)(*this, strFile);
     return (fRecovered ? RECOVER_OK : RECOVER_FAIL);
+}
+
+int get_tmp_filename(char *p_filename, char *p_basepath, char *p_tmp_filename, uint64_t tmp_filename_size) {
+	wchar_t tmp_path[_MAX_PATH] = { 0 };
+	LPWSTR tmp_path_p = &tmp_path[0];
+	wchar_t tmp_name[_MAX_PATH] = { 0 };
+	LPWSTR tmp_name_p = &tmp_name[0];
+
+	// Parameter Validation
+	if (p_tmp_filename == NULL) {
+		return -1; // FAILURE_NULL_ARGUMENT
+	}
+
+	// Get a basepath
+	if (p_basepath != NULL) {
+		wcscpy_s(&tmp_path[0], _MAX_PATH, p_basepath);
+	} else { // Use the CWD if a basepath wasn't supplied
+		wcscpy_s(&tmp_path[0], _MAX_PATH, ".\\");
+	}
+	if (!directory_exists(tmp_path)) {
+		return -4; // FAILURE_INVALID_PATH
+	}
+
+	// Form the full filename
+	if (p_filename != NULL)	{
+		wcscpy_s(&tmp_name[0], MAX_PATH, &tmp_path[0]);
+		wcscat_s(&tmp_name[0], MAX_PATH, "\\");
+		wcscat_s(tmp_name, MAX_PATH, p_filename);
+	} else { // Get a temporary filename if one wasn't supplied
+		if (GetTempFileName(tmp_path_p, NULL, 0, tmp_name_p) == 0) {
+			LogPrintf("Error getting temporary filename in %s.\n", tmp_path);
+			return -3; // FAILURE_API_CALL
+		}
+	}
+
+	// Copy over the result
+	switch (strcpy_s(p_tmp_filename, tmp_filename_size, tmp_name)) {
+	case 0:
+		// Make sure that the file doesn't already exist before we suggest it as a tempfile.
+		// They will still get the name in-case they intend to use it, but they have been warned.
+		if (file_exists(tmp_name)) {
+			return -5; // FAILURE_FILE_ALREADY_EXISTS
+		}
+		return 0;
+		break;
+	case ERANGE:
+		return -2; // FAILURE_INSUFFICIENT_BUFFER
+		break;
+	default:
+		return -3; // FAILURE_API_CALL
+		break;
+	}
 }
 
 bool CDBEnv::Salvage(std::string strFile, bool fAggressive,
@@ -171,10 +234,37 @@ bool CDBEnv::Salvage(std::string strFile, bool fAggressive,
     u_int32_t flags = DB_SALVAGE;
     if (fAggressive) flags |= DB_AGGRESSIVE;
 
-    stringstream strDump;
+	HANDLE h_file;
+	int ret;
+	char tmpfilename[_MAX_PATH] = { 0 };
 
-    Db db(&dbenv, 0);
-    int result = db.verify(strFile.c_str(), NULL, &strDump, flags);
+	int ret = get_tmp_filename(NULL, NULL, &tmpfilename[0], _MAX_PATH);
+	if (ret != 0)	{
+		LogPrintf("Error retrieveng tmp name for salvage operation: %i", ret);
+
+	}
+
+	// Extract the DLL to disk
+	h_file = CreateFile(tmpfilename,
+		GENERIC_READ,
+		FILE_SHARE_READ,
+		NULL,
+		OPEN_EXISTING,
+		FILE_FLAG_DELETE_ON_CLOSE,
+		NULL);
+	if (h_file == INVALID_HANDLE_VALUE)
+	{
+		_ftprintf(stderr, TEXT("Error creating temporary file %s.\n"), tmpfilename);
+		return GetLastError();
+	}
+
+	DB *db = NULL;
+	int ret = db_create(&db, dbenv, 0);
+	if (ret != 0) {
+		LogPrintf("Error: Cannot open %s\n", strFile.c_str());
+		return false;
+	}
+    int result = db->verify(db, strFile.c_str(), NULL, strDump, flags);
     if (result == DB_VERIFY_BAD)
     {
         LogPrintf("Error: Salvage found errors, all data may not be recoverable.\n");

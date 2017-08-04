@@ -1715,7 +1715,7 @@ uint64_t CNode::GetTotalBytesSent()
 
 CAddrDB::CAddrDB()
 {
-    pathAddr = GetDataDir() / "peers.dat";
+    this->pathAddr = GetDataDir() / "peers.dat";
 }
 
 bool CAddrDB::Write(const CAddrMan& addr)
@@ -1750,7 +1750,7 @@ bool CAddrDB::Write(const CAddrMan& addr)
     fileout.fclose();
 
     // replace existing peers.dat, if any, with new peers.dat.XXXX
-    if (!RenameOver(pathTmp, pathAddr))
+    if (!RenameOver(pathTmp, this->pathAddr))
         return error("CAddrman::Write() : Rename-into-place failed");
 
     return true;
@@ -1759,13 +1759,13 @@ bool CAddrDB::Write(const CAddrMan& addr)
 bool CAddrDB::Read(CAddrMan& addr)
 {
     // open input file, and associate with CAutoFile
-    FILE *file = fopen(pathAddr.string().c_str(), "rb");
+    FILE *file = fopen((this->pathAddr).generic_string().c_str(), "rb");
     CAutoFile filein = CAutoFile(file, SER_DISK, CLIENT_VERSION);
     if (!filein)
         return error("CAddrman::Read() : open failed");
 
     // use file size to size memory buffer
-    int fileSize = boost::filesystem::file_size(pathAddr);
+    int fileSize = boost::filesystem::file_size(this->pathAddr);
     int dataSize = fileSize - sizeof(uint256);
     // Don't try to resize to a negative number if file is small
     if ( dataSize < 0 ) dataSize = 0;
