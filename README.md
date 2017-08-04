@@ -14,7 +14,7 @@ Ember is a PoW/PoS-based cryptocurrency.
 * Time to reach Maximum Supply:  ~~approx. 3 years (Including PoW+PoS subsidy)~~ We're well past this point.
 * rpcport: 10022
 * port: 10024
-* Blocktime: ~~approx. 3 Minutes ~~
+* Blocktime: ~~approx. 3 Minutes~~
 
 Ember General Info
 ------------------
