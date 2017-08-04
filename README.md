@@ -11,10 +11,10 @@ Ember is a PoW/PoS-based cryptocurrency.
 * PoS Start Block: 3,805
 * PoS Maturity: 10 Hours until coins are valid for stake
 * TX maturity (Mined): 60 Confirmations / (Sent/Received): 8 Confirmations
-* Time to reach Maximum Supply:  ~~ ~3 years (Including PoW+PoS subsidy)~~ We're well past this point.
+* Time to reach Maximum Supply:  ~~approx. 3 years (Including PoW+PoS subsidy)~~ We're well past this point.
 * rpcport: 10022
 * port: 10024
-* Blocktime: ~~ ~3 Minutes ~~
+* Blocktime: ~~approx. 3 Minutes ~~
 
 Ember General Info
 ------------------
