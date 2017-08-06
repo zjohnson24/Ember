@@ -183,7 +183,7 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
 {
     bool fAllAccounts = (strAccount == "*");
 
-    Dbc* pcursor = GetCursor();
+    DBC *pcursor = GetCursor();
     if (!pcursor)
         throw runtime_error("CWalletDB::ListAccountCreditDebit() : cannot create DB cursor");
     unsigned int fFlags = DB_SET_RANGE;
@@ -200,7 +200,7 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
             break;
         else if (ret != 0)
         {
-            pcursor->close();
+            pcursor->close(pcursor);
             throw runtime_error("CWalletDB::ListAccountCreditDebit() : error scanning DB");
         }
 
@@ -219,7 +219,7 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
         entries.push_back(acentry);
     }
 
-    pcursor->close();
+    pcursor->close(pcursor);
 }
 
 
@@ -576,7 +576,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
         }
 
         // Get cursor
-        Dbc* pcursor = GetCursor();
+        DBC* pcursor = GetCursor();
         if (!pcursor)
         {
             LogPrintf("Error getting wallet database cursor\n");
@@ -617,7 +617,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
             if (!strErr.empty())
                 LogPrintf("%s\n", strErr);
         }
-        pcursor->close();
+        pcursor->close(pcursor);
     }
     catch (boost::thread_interrupted) {
         throw;
@@ -777,8 +777,7 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
     int64_t now = GetTime();
     std::string newFilename = strprintf("wallet.%d.bak", now);
 
-    int result = dbenv.dbenv.dbrename(NULL, filename.c_str(), NULL,
-                                      newFilename.c_str(), DB_AUTO_COMMIT);
+    int result = dbenv.dbenv->dbrename(dbenv.dbenv, NULL, filename.c_str(), NULL, newFilename.c_str(), DB_AUTO_COMMIT);
     if (result == 0)
         LogPrintf("Renamed %s to %s\n", filename, newFilename);
     else
@@ -797,49 +796,48 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
     LogPrintf("Salvage(aggressive) found %u records\n", salvagedData.size());
 
     bool fSuccess = allOK;
-    Db* pdbCopy = new Db(&dbenv.dbenv, 0);
-    int ret = pdbCopy->open(NULL,                 // Txn pointer
+	DB *pdbCopy;
+	db_create(&pdbCopy, dbenv.dbenv, 0);
+    int ret = pdbCopy->open(pdbCopy,
+							NULL,                 // Txn pointer
                             filename.c_str(),   // Filename
                             "main",    // Logical db name
                             DB_BTREE,  // Database type
                             DB_CREATE,    // Flags
                             0);
-    if (ret > 0)
-    {
+    if (ret > 0) {
         LogPrintf("Cannot create database file %s\n", filename);
         return false;
     }
     CWallet dummyWallet;
     CWalletScanState wss;
 
-    DbTxn* ptxn = dbenv.TxnBegin();
-    BOOST_FOREACH(CDBEnv::KeyValPair& row, salvagedData)
-    {
-        if (fOnlyKeys)
-        {
-            CDataStream ssKey(row.first, SER_DISK, CLIENT_VERSION);
-            CDataStream ssValue(row.second, SER_DISK, CLIENT_VERSION);
-            string strType, strErr;
-            bool fReadOK = ReadKeyValue(&dummyWallet, ssKey, ssValue,
-                                        wss, strType, strErr);
-            if (!IsKeyType(strType))
-                continue;
-            if (!fReadOK)
-            {
-                LogPrintf("WARNING: CWalletDB::Recover skipping %s: %s\n", strType, strErr);
-                continue;
-            }
-        }
-        Dbt datKey(&row.first[0], row.first.size());
-        Dbt datValue(&row.second[0], row.second.size());
-        int ret2 = pdbCopy->put(ptxn, &datKey, &datValue, DB_NOOVERWRITE);
+    DB_TXN* ptxn = dbenv.TxnBegin();
+	BOOST_FOREACH(CDBEnv::KeyValPair& row, salvagedData)
+	{
+		if (fOnlyKeys)
+		{
+			CDataStream ssKey(row.first, SER_DISK, CLIENT_VERSION);
+			CDataStream ssValue(row.second, SER_DISK, CLIENT_VERSION);
+			string strType, strErr;
+			bool fReadOK = ReadKeyValue(&dummyWallet, ssKey, ssValue,
+				wss, strType, strErr);
+			if (!IsKeyType(strType))
+				continue;
+			if (!fReadOK)
+			{
+				LogPrintf("WARNING: CWalletDB::Recover skipping %s: %s\n", strType, strErr);
+				continue;
+			}
+		}
+		DBT datKey = DBT{ &row.first[0], row.first.size() };
+		DBT datValue = DBT { &row.second[0], row.second.size() };
+        int ret2 = pdbCopy->put(pdbCopy, ptxn, &datKey, &datValue, DB_NOOVERWRITE);
         if (ret2 > 0)
             fSuccess = false;
     }
-    ptxn->commit(0);
-    pdbCopy->close(0);
-    delete pdbCopy;
-
+    ptxn->commit(ptxn, 0);
+    pdbCopy->close(pdbCopy, 0);
     return fSuccess;
 }
 

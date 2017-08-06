@@ -4,19 +4,19 @@
     <ShowAllFiles>true</ShowAllFiles>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>-debug -testnet -disablewallet</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-debug -datadir=%appdata%\EmberTest -testnet -disablewallet</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-debug -testnet -disablewallet</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-debug -datadir=%appdata%\EmberTest -testnet -disablewallet</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LocalDebuggerCommandArguments>-debug</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-debug -datadir=%appdata%\EmberRelease </LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>-debug</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-debug -datadir=%appdata%\EmberRelease </LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>
