@@ -1768,13 +1768,13 @@ bool CAddrDB::Read(CAddrMan& addr) {
     int dataSize = fileSize - sizeof(uint256);
     // Don't try to resize to a negative number if file is small
     if ( dataSize < 0 ) dataSize = 0;
-    vector<unsigned char> vchData;
+    std::vector<unsigned char> vchData;
     vchData.resize(dataSize);
     uint256 hashIn;
 
     // read data and checksum from file
     try {
-        filein.read((char*)&vchData.begin()[0], dataSize);
+        filein.read(reinterpret_cast<char*>(vchData.data()), dataSize);
         filein >> hashIn;
     } catch (std::exception &e) {
         return error("CAddrman::Read() 2 : I/O error or stream data corrupted");

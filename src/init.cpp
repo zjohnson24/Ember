@@ -519,13 +519,13 @@ bool AppInit2(boost::thread_group& threadGroup)
         if (GetBoolArg("-salvagewallet", false))
         {
             // Recover readable keypairs:
-            if (!CWalletDB::Recover(bitdb, strWalletFileName, true))
+            //if (!CWalletDB::Recover(bitdb, strWalletFileName, true))
                 return false;
         }
 
         if (filesystem::exists(GetDataDir() / strWalletFileName))
         {
-            CDBEnv::VerifyResult r = bitdb.Verify(strWalletFileName, CWalletDB::Recover);
+/*            CDBEnv::VerifyResult r = bitdb.Verify(strWalletFileName, CWalletDB::Recover);
             if (r == CDBEnv::RECOVER_OK)
             {
                 string msg = strprintf(_("Warning: wallet.dat corrupt, data salvaged!"
@@ -536,6 +536,7 @@ bool AppInit2(boost::thread_group& threadGroup)
             }
             if (r == CDBEnv::RECOVER_FAIL)
                 return InitError(_("wallet.dat corrupt, salvage failed"));
+*/
         }
     } // (!fDisableWallet)
 #endif // ENABLE_WALLET
@@ -770,10 +771,9 @@ bool AppInit2(boost::thread_group& threadGroup)
         RegisterWallet(pwalletMain);
 
         CBlockIndex *pindexRescan = pindexBest;
-        if (GetBoolArg("-rescan", false))
-            pindexRescan = pindexGenesisBlock;
-        else
-        {
+		if (GetBoolArg("-rescan", false)) {
+			pindexRescan = pindexGenesisBlock;
+		} else {
             CWalletDB walletdb(strWalletFileName);
             CBlockLocator locator;
             if (walletdb.ReadBestBlock(locator))
@@ -781,8 +781,7 @@ bool AppInit2(boost::thread_group& threadGroup)
             else
                 pindexRescan = pindexGenesisBlock;
         }
-        if (pindexBest != pindexRescan && pindexBest && pindexRescan && pindexBest->nHeight > pindexRescan->nHeight)
-        {
+        if (pindexBest != pindexRescan && pindexBest && pindexRescan && pindexBest->nHeight > pindexRescan->nHeight) {
             uiInterface.InitMessage(_("Rescanning..."));
             LogPrintf("Rescanning last %i blocks (from block %i)...\n", pindexBest->nHeight - pindexRescan->nHeight, pindexRescan->nHeight);
             nStart = GetTimeMillis();

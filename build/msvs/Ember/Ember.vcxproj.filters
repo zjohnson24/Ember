@@ -332,9 +332,6 @@
     <ClInclude Include="..\..\..\src\sync.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\threadsafety.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\timedata.h">
       <Filter>Header Files</Filter>
     </ClInclude>

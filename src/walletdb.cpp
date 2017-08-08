@@ -765,6 +765,7 @@ bool BackupWallet(const CWallet& wallet, const string& strDest)
 //
 // Try to (very carefully!) recover wallet.dat if there is a problem.
 //
+/*
 bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
 {
     // Recovery procedure:
@@ -830,8 +831,8 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
 				continue;
 			}
 		}
-		DBT datKey = DBT{ &row.first[0], row.first.size() };
-		DBT datValue = DBT { &row.second[0], row.second.size() };
+		DBT datKey = DBT{ &row.first[0], (uint32_t)row.first.size() };
+		DBT datValue = DBT { &row.second[0], (uint32_t)row.second.size() };
         int ret2 = pdbCopy->put(pdbCopy, ptxn, &datKey, &datValue, DB_NOOVERWRITE);
         if (ret2 > 0)
             fSuccess = false;
@@ -841,7 +842,10 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
     return fSuccess;
 }
 
-bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename)
+*/
+
+/*bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename)
 {
     return CWalletDB::Recover(dbenv, filename, false);
 }
+*/

@@ -126,7 +126,6 @@
     <ClInclude Include="..\..\..\src\sph_skein.h" />
     <ClInclude Include="..\..\..\src\sph_types.h" />
     <ClInclude Include="..\..\..\src\sync.h" />
-    <ClInclude Include="..\..\..\src\threadsafety.h" />
     <ClInclude Include="..\..\..\src\timedata.h" />
     <ClInclude Include="..\..\..\src\tinyformat.h" />
     <ClInclude Include="..\..\..\src\txdb-leveldb.h" />
@@ -153,7 +152,7 @@
     <ProjectGuid>{914E1177-0A9C-46CE-9E30-5C3E3779DC9F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ConsoleApplication1</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -202,19 +201,23 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <CustomBuildAfterTargets>PostBuildEvent</CustomBuildAfterTargets>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <CustomBuildAfterTargets>PostBuildEvent</CustomBuildAfterTargets>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <CustomBuildAfterTargets>PostBuildEvent</CustomBuildAfterTargets>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <CustomBuildAfterTargets>PostBuildEvent</CustomBuildAfterTargets>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -222,17 +225,27 @@
       <WarningLevel>Level1</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>ENABLE_WALLET=1;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\apps\Oracle\Berkeley DB 12cR1 6.2.32\include;E:\projects\Ember\dependencies\libressl-2.5.5-windows\include;E:\projects\Ember\dependencies\boost_1_64_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\apps\Oracle\Berkeley DB 12cR1 6.2.32\include;E:\projects\Ember\dependencies\libressl-2.5.5-windows\include;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtGui;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtCore;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtWidgets;E:\projects\Ember\dependencies\boost_1_64_0;%(AdditionalIncludeDirectories);E:\projects\Ember\src</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>E:\projects\Ember\lib;E:\projects\Ember\lib\boost;E:\projects\Ember\dependencies\libressl-2.5.5-windows\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libssl-43.lib;libtls-15.lib;libcrypto-41.lib;libdb53d.lib;leveldb_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>E:\projects\Ember\lib\debug\x86;E:\projects\Ember\lib\debug\boost;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libssl-43.lib;libtls-15.lib;libcrypto-41.lib;libdb_small53.lib;leveldb.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
-      <Command>copy /Y "$(ProjectPath)..\..\..\dll\libssl-43.dll" "$(SolutionDir)libssl-43.dll"</Command>
+      <Command>
+      </Command>
     </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /Y "$(SolutionDir)..\..\dll\libssl-43.dll" "$(TargetDir)libssl-43.dll"
+copy /Y "$(SolutionDir)..\..\dll\libtls-15.dll" "$(TargetDir)libtls-15.dll"
+copy /Y "$(SolutionDir)..\..\dll\libcrypto-41.dll" "$(TargetDir)libcrypto-41.dll"
+copy /Y "$(SolutionDir)..\..\dll\libdb53.dll" "$(TargetDir)libdb53.dll"
+
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -240,17 +253,27 @@
       <WarningLevel>Level1</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>ENABLE_WALLET=1;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\apps\Oracle\Berkeley DB 12cR1 6.2.32\include;E:\projects\Ember\dependencies\libressl-2.5.5-windows\include;E:\projects\Ember\dependencies\boost_1_64_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\apps\Oracle\Berkeley DB 12cR1 6.2.32\include;E:\projects\Ember\dependencies\libressl-2.5.5-windows\include;E:\projects\Ember\dependencies\boost_1_64_0;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtWidgets;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtCore;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtGui;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\*;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include;%(AdditionalIncludeDirectories);E:\projects\Ember\src</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>E:\projects\Ember\lib;E:\projects\Ember\lib\boost;E:\projects\Ember\dependencies\libressl-2.5.5-windows\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libssl-43.lib;libtls-15.lib;libcrypto-41.lib;libdb53d.lib;leveldb_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>E:\projects\Ember\lib\debug\x64;E:\projects\Ember\lib\debug\boost;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libssl-43.lib;libtls-15.lib;libcrypto-41.lib;libdb_small53.lib;leveldb.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
-      <Command>copy /Y "$(ProjectPath)..\..\..\dll\libssl-43.dll" "$(SolutionDir)libssl-43.dll"</Command>
+      <Command>
+      </Command>
     </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /Y "$(SolutionDir)..\..\dll\libssl-43.dll" "$(TargetDir)libssl-43.dll"
+copy /Y "$(SolutionDir)..\..\dll\libtls-15.dll" "$(TargetDir)libtls-15.dll"
+copy /Y "$(SolutionDir)..\..\dll\libcrypto-41.dll" "$(TargetDir)libcrypto-41.dll"
+copy /Y "$(SolutionDir)..\..\dll\libdb53.dll" "$(TargetDir)libdb53.dll"
+
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -260,19 +283,29 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>ENABLE_WALLET=1;WIN32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\apps\Oracle\Berkeley DB 12cR1 6.2.32\include;E:\projects\Ember\dependencies\libressl-2.5.5-windows\include;E:\projects\Ember\dependencies\boost_1_64_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\apps\Oracle\Berkeley DB 12cR1 6.2.32\include;E:\projects\Ember\dependencies\libressl-2.5.5-windows\include;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtGui;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtCore;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtWidgets;E:\projects\Ember\dependencies\boost_1_64_0;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\*;%(AdditionalIncludeDirectories);E:\projects\Ember\src</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>E:\projects\Ember\lib;E:\projects\Ember\lib\boost;E:\projects\Ember\dependencies\libressl-2.5.5-windows\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libssl-43.lib;libtls-15.lib;libcrypto-41.lib;libdb53.lib;leveldb.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>E:\projects\Ember\lib\release\x86;E:\projects\Ember\lib\release\boost;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libssl-43.lib;libtls-15.lib;libcrypto-41.lib;libdb_small53.lib;leveldb.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
-      <Command>copy /Y "$(ProjectPath)..\..\..\dll\libssl-43.dll" "$(SolutionDir)libssl-43.dll"</Command>
+      <Command>
+      </Command>
     </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /Y "$(SolutionDir)..\..\dll\libssl-43.dll" "$(TargetDir)libssl-43.dll"
+copy /Y "$(SolutionDir)..\..\dll\libtls-15.dll" "$(TargetDir)libtls-15.dll"
+copy /Y "$(SolutionDir)..\..\dll\libcrypto-41.dll" "$(TargetDir)libcrypto-41.dll"
+copy /Y "$(SolutionDir)..\..\dll\libdb53.dll" "$(TargetDir)libdb53.dll"
+
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -282,19 +315,29 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>ENABLE_WALLET=1;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\apps\Oracle\Berkeley DB 12cR1 6.2.32\include;E:\projects\Ember\dependencies\libressl-2.5.5-windows\include;E:\projects\Ember\dependencies\boost_1_64_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\apps\Oracle\Berkeley DB 12cR1 6.2.32\include;E:\projects\Ember\dependencies\libressl-2.5.5-windows\include;E:\projects\Ember\dependencies\boost_1_64_0;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtWidgets;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtCore;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtGui;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtWidgets;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include;%(AdditionalIncludeDirectories);E:\projects\Ember\src</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>E:\projects\Ember\lib;E:\projects\Ember\lib\boost;E:\projects\Ember\dependencies\libressl-2.5.5-windows\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libssl-43.lib;libtls-15.lib;libcrypto-41.lib;libdb53.lib;leveldb.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>E:\projects\Ember\lib\release\x64;E:\projects\Ember\lib\release\boost;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libssl-43.lib;libtls-15.lib;libcrypto-41.lib;libdb_small53.lib;leveldb.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
-      <Command>copy /Y "$(ProjectPath)..\..\..\dll\libssl-43.dll" "$(SolutionDir)libssl-43.dll"</Command>
+      <Command>
+      </Command>
     </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /Y "$(SolutionDir)..\..\dll\libssl-43.dll" "$(TargetDir)libssl-43.dll"
+copy /Y "$(SolutionDir)..\..\dll\libtls-15.dll" "$(TargetDir)libtls-15.dll"
+copy /Y "$(SolutionDir)..\..\dll\libcrypto-41.dll" "$(TargetDir)libcrypto-41.dll"
+copy /Y "$(SolutionDir)..\..\dll\libdb53.dll" "$(TargetDir)libdb53.dll"
+
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

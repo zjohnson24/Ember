@@ -115,8 +115,8 @@ public:
 
     DBErrors ReorderTransactions(CWallet*);
     DBErrors LoadWallet(CWallet* pwallet);
-    static bool Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys);
-    static bool Recover(CDBEnv& dbenv, std::string filename);
+    //static bool Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys);
+    //static bool Recover(CDBEnv& dbenv, std::string filename);
 };
 
 bool BackupWallet(const CWallet& wallet, const std::string& strDest);

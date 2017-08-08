@@ -51,7 +51,7 @@ void CDBEnv::EnvShutdown()
 
 CDBEnv::CDBEnv() {
 	int ret;
-	if ((ret = db_env_create(&dbenv, 0)) != 0) {
+	if (0 != (ret = db_env_create(&dbenv, 0))) {
 		cerr << "db_env_create error:" << db_strerror(ret) << endl;
 		exit(1);
 	}
@@ -69,10 +69,14 @@ void CDBEnv::Close()
     EnvShutdown();
 }
 
-bool CDBEnv::Open(boost::filesystem::path pathEnv_)
-{
-    if (fDbEnvInit)
-        return true;
+bool CDBEnv::Open(boost::filesystem::path pathEnv_) {
+	int ret;
+	FILE *err_file_h;
+	const char * err_file_path;
+
+	if (fDbEnvInit) {
+		return true;
+	}
 
     boost::this_thread::interruption_point();
 
@@ -84,24 +88,13 @@ bool CDBEnv::Open(boost::filesystem::path pathEnv_)
     filesystem::path pathErrorFile = pathDataDir / "db.log";
     LogPrintf("dbenv.open LogDir=%s ErrorFile=%s\n", pathLogDir.generic_string(), pathErrorFile.generic_string());
 
-    //int nDbCache = GetArg("-dbcache", 25);
-	dbenv->set_lg_dir(dbenv, pathLogDir.generic_string().c_str());
-    //dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
-    //dbenv.set_lg_bsize(1048576);
-    //dbenv.set_lg_max(10485760);
-    //dbenv.set_lk_max_locks(10000);
-    //dbenv.set_lk_max_objects(10000);
-	dbenv->set_errfile(dbenv, fopen(pathErrorFile.generic_string().c_str(), "a")); /// debug
-//#ifdef DB_LOG_AUTO_REMOVE
-//	dbenv.log_set_config(DB_LOG_AUTO_REMOVE, 1);
-//#endif
 	const std::string& string_thing = pathDataDir.generic_string();
 	LogPrintf("string_thing: '%s'\n", string_thing);
 
 	const char *str_p = string_thing.c_str();
 	LogPrintf("str_p: %s\n", str_p);
 
-    int ret = dbenv->open(dbenv, str_p,
+    ret = dbenv->open(dbenv, str_p,
 					 DB_CREATE      |
                      DB_INIT_LOCK   |
                      DB_INIT_LOG    |
@@ -110,10 +103,33 @@ bool CDBEnv::Open(boost::filesystem::path pathEnv_)
                      DB_THREAD      |
                      DB_RECOVER     |
 				     DB_AUTO_COMMIT | 
-		             DB_PRIVATE,
+#ifdef DB_LOG_AUTO_REMOVE
+					 DB_LOG_AUTO_REMOVE |
+#endif
+					 DB_TXN_WRITE_NOSYNC,
                      S_IRUSR | S_IWUSR);
-    if (ret != 0)
-        return error("CDB() : error %s (%d) opening database environment", db_strerror(ret), ret);
+	if (ret != 0) {
+		return error("CDB() : error %s (%d) opening database environment", db_strerror(ret), ret);
+	}
+
+	err_file_path = pathErrorFile.generic_string().c_str();
+	err_file_h = fopen(err_file_path, "a");
+	if (NULL == err_file_h) {
+		return error("CDB() : error opening file: %s\n", err_file_path);
+	}
+	dbenv->set_errfile(dbenv, err_file_h);
+
+	if (0 != (ret = dbenv->set_memory_max(dbenv, 4, 0))) {
+		return error("CDB() : error %s (%d) opening database environment", db_strerror(ret), ret);
+	}
+
+
+	int nDbCache = GetArg("-dbcache", 25);
+	//	dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024) * 1048576, 1);
+
+	//#ifdef DB_LOG_AUTO_REMOVE
+	//	dbenv->log_set_config(dbenv, DB_LOG_AUTO_REMOVE, 1);
+	//#endif
 
     fDbEnvInit = true;
     fMockDb = false;
@@ -130,11 +146,7 @@ void CDBEnv::MakeMock()
 
     LogPrint("db", "CDBEnv::MakeMock()\n");
 
-    //dbenv.set_cachesize(1, 0, 1);
-    //dbenv.set_lg_bsize(10485760*4);
-    //dbenv.set_lg_max(10485760);
-    //dbenv.set_lk_max_locks(10000);
-    //dbenv.set_lk_max_objects(10000);
+    dbenv->set_cachesize(dbenv, 1, 0, 1);
 #ifdef DB_LOG_IN_MEMORY
     dbenv->log_set_config(dbenv, DB_LOG_IN_MEMORY, 1);
 #endif
@@ -331,8 +343,7 @@ bool CDBEnv::Salvage(std::string strFile, bool fAggressive, std::vector<CDBEnv::
 		return false;
 	}
     int result = db->verify(db, strFile.c_str(), NULL, cfile, flags);
-    if (result == DB_VERIFY_BAD)
-    {
+    if (result == DB_VERIFY_BAD) {
         LogPrintf("Error: Salvage found errors, all data may not be recoverable.\n");
         if (!fAggressive)
         {
@@ -577,8 +588,8 @@ start_loop:
 								ssValue.clear();
 								ssValue << CLIENT_VERSION;
 							}
-							DBT datKey = DBT{ &ssKey[0], ssKey.size() };
-							DBT datValue = DBT{&ssValue[0], ssValue.size() };
+							DBT datKey = DBT{ &ssKey[0], (uint32_t)ssKey.size() };
+							DBT datValue = DBT{&ssValue[0], (uint32_t)ssValue.size() };
                             int ret2 = pdbCopy->put(pdbCopy, NULL, &datKey, &datValue, DB_NOOVERWRITE);
                             if (ret2 > 0)
                                 fSuccess = false;
