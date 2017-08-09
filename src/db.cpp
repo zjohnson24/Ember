@@ -72,7 +72,6 @@ void CDBEnv::Close()
 bool CDBEnv::Open(boost::filesystem::path pathEnv_) {
 	int ret;
 	FILE *err_file_h;
-	const char * err_file_path;
 
 	if (fDbEnvInit) {
 		return true;
@@ -87,49 +86,40 @@ bool CDBEnv::Open(boost::filesystem::path pathEnv_) {
     filesystem::create_directory(pathLogDir);
     filesystem::path pathErrorFile = pathDataDir / "db.log";
     LogPrintf("dbenv.open LogDir=%s ErrorFile=%s\n", pathLogDir.generic_string(), pathErrorFile.generic_string());
-
 	const std::string& string_thing = pathDataDir.generic_string();
-	LogPrintf("string_thing: '%s'\n", string_thing);
-
 	const char *str_p = string_thing.c_str();
-	LogPrintf("str_p: %s\n", str_p);
 
-    ret = dbenv->open(dbenv, str_p,
-					 DB_CREATE      |
-                     DB_INIT_LOCK   |
-                     DB_INIT_LOG    |
-                     DB_INIT_MPOOL  |
-                     DB_INIT_TXN    |
-                     DB_THREAD      |
-                     DB_RECOVER     |
-				     DB_AUTO_COMMIT | 
+	uint32_t flags = DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_THREAD | DB_AUTO_COMMIT | DB_TXN_WRITE_NOSYNC;
 #ifdef DB_LOG_AUTO_REMOVE
-					 DB_LOG_AUTO_REMOVE |
+	flags |= DB_LOG_AUTO_REMOVE;
 #endif
-					 DB_TXN_WRITE_NOSYNC,
-                     S_IRUSR | S_IWUSR);
-	if (ret != 0) {
-		return error("CDB() : %s (%d) Opening database environment", db_strerror(ret), ret);
+	if (GetBoolArg("-privdb", true)) {
+		flags |= DB_PRIVATE;
 	}
 
-	err_file_path = pathErrorFile.generic_string().c_str();
-	err_file_h = fopen(err_file_path, "a");
+	int nDbCache = GetArg("-dbcache", 25);
+	dbenv->set_cachesize(dbenv, nDbCache / 1024, (nDbCache % 1024) * 1048576, 1);
+	/*
+	if (0 != (ret = dbenv->set_memory_max(dbenv, 4, 0))) {
+		return error("CDB() : error %s (%d) setting max memory", db_strerror(ret), ret);
+	}
+
+	if (0 != (ret = dbenv->set_memory_init(dbenv, DB_MEM_CONFIG type, 0))) {
+		return error("CDB() : error %s (%d) setting initial memory", db_strerror(ret), ret);
+	}
+	*/
+	const std::string& err_file_path = pathErrorFile.generic_string();
+	err_file_h = fopen(err_file_path.c_str(), "a");
 	if (NULL == err_file_h) {
 		return error("CDB() : error opening file: %s\n", err_file_path);
 	}
 	dbenv->set_errfile(dbenv, err_file_h);
 
-	//if (0 != (ret = dbenv->set_memory_max(dbenv, 4, 0))) {
-	//	return error("CDB() : error %s (%d) setting max memory", db_strerror(ret), ret);
-	//}
 
+	if (0 != (ret = dbenv->open(dbenv, str_p, flags, S_IRUSR | S_IWUSR))) {
+		return error("CDB() : %s (%d) Opening database environment", db_strerror(ret), ret);
+	}
 
-	int nDbCache = GetArg("-dbcache", 25);
-	//	dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024) * 1048576, 1);
-
-	//#ifdef DB_LOG_AUTO_REMOVE
-	//	dbenv->log_set_config(dbenv, DB_LOG_AUTO_REMOVE, 1);
-	//#endif
 
     fDbEnvInit = true;
     fMockDb = false;
@@ -438,7 +428,6 @@ CDB::CDB(const std::string& strFilename, const char* pszMode) :
         pdb = bitdb.mapDb[strFile];
 		if (pdb == NULL)
 		{
-			DB *pdb;
 			ret = db_create(&pdb, bitdb.dbenv, 0);
 			if (ret != 0) {
 				throw runtime_error(strprintf("Error: Cannot open %s\n", strFile.c_str()));
@@ -543,8 +532,7 @@ bool CDB::Rewrite(const string& strFile, const char* pszSkip) {
                 { // surround usage of db with extra {}
                     CDB db(strFile.c_str(), "r");
 					DB *pdbCopy;
-					int ret = db_create(&pdbCopy, bitdb.dbenv, 0);
-					if (ret != 0) {
+					if (0 != (ret = db_create(&pdbCopy, bitdb.dbenv, 0))) {
 						LogPrintf("Verify Failed for: %s\n", strFile.c_str());
 						fSuccess = false;
 						goto start_loop;
@@ -563,10 +551,10 @@ bool CDB::Rewrite(const string& strFile, const char* pszSkip) {
 						goto start_loop;
                     }
 start_loop:
-                    DBC *pcursor = db.GetCursor();
-                    if (pcursor)
-						while (fSuccess)
-						{
+
+					DBC *pcursor = NULL;
+					if (0 != (ret = db.pdb->cursor(db.pdb, NULL, &pcursor, 0))) {
+						while (fSuccess) {
 							CDataStream ssKey(SER_DISK, CLIENT_VERSION);
 							CDataStream ssValue(SER_DISK, CLIENT_VERSION);
 							int ret = db.ReadAtCursor(pcursor, ssKey, ssValue, DB_NEXT);
@@ -589,13 +577,13 @@ start_loop:
 								ssValue << CLIENT_VERSION;
 							}
 							DBT datKey = DBT{ &ssKey[0], (uint32_t)ssKey.size() };
-							DBT datValue = DBT{&ssValue[0], (uint32_t)ssValue.size() };
-                            int ret2 = pdbCopy->put(pdbCopy, NULL, &datKey, &datValue, DB_NOOVERWRITE);
-                            if (ret2 > 0)
-                                fSuccess = false;
-                        }
-                    if (fSuccess)
-                    {
+							DBT datValue = DBT{ &ssValue[0], (uint32_t)ssValue.size() };
+							int ret2 = pdbCopy->put(pdbCopy, NULL, &datKey, &datValue, DB_NOOVERWRITE);
+							if (ret2 > 0)
+								fSuccess = false;
+						}
+					}
+                    if (fSuccess) {
                         db.Close();
                         bitdb.CloseDb(strFile);
 						if (pdbCopy->close(pdbCopy, 0)) {

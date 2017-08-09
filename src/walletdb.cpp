@@ -181,11 +181,14 @@ int64_t CWalletDB::GetAccountCreditDebit(const string& strAccount)
 
 void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountingEntry>& entries)
 {
+	int ret;
     bool fAllAccounts = (strAccount == "*");
 
-    DBC *pcursor = GetCursor();
-    if (!pcursor)
-        throw runtime_error("CWalletDB::ListAccountCreditDebit() : cannot create DB cursor");
+	DBC *pcursor = NULL;
+	if (0 != (ret = pdb->cursor(pdb, NULL, &pcursor, 0))) {
+		throw runtime_error("CWalletDB::ListAccountCreditDebit() : cannot create DB cursor");
+	}
+        
     unsigned int fFlags = DB_SET_RANGE;
     while (true)
     {
@@ -194,12 +197,11 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
         if (fFlags == DB_SET_RANGE)
             ssKey << boost::make_tuple(string("acentry"), (fAllAccounts? string("") : strAccount), uint64_t(0));
         CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-        int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+        ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
         fFlags = DB_NEXT;
-        if (ret == DB_NOTFOUND)
-            break;
-        else if (ret != 0)
-        {
+		if (ret == DB_NOTFOUND) {
+			break;
+		} else if (ret != 0) {
             pcursor->close(pcursor);
             throw runtime_error("CWalletDB::ListAccountCreditDebit() : error scanning DB");
         }
@@ -558,12 +560,12 @@ static bool IsKeyType(string strType)
             strType == "mkey" || strType == "ckey");
 }
 
-DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
-{
+DBErrors CWalletDB::LoadWallet(CWallet* pwallet) {
     pwallet->vchDefaultKey = CPubKey();
     CWalletScanState wss;
     bool fNoncriticalErrors = false;
     DBErrors result = DB_LOAD_OK;
+	int ret;
 
     try {
         LOCK(pwallet->cs_wallet);
@@ -576,19 +578,19 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
         }
 
         // Get cursor
-        DBC* pcursor = GetCursor();
-        if (!pcursor)
-        {
-            LogPrintf("Error getting wallet database cursor\n");
-            return DB_CORRUPT;
-        }
+        DBC *pcursor = NULL;
+		if (0 != (ret = pdb->cursor(pdb, NULL, &pcursor, 0))) {
+			LogPrintf("Error getting wallet database cursor\n");
+			return DB_CORRUPT;
+		}
+
 
         while (true)
         {
             // Read next record
             CDataStream ssKey(SER_DISK, CLIENT_VERSION);
             CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-            int ret = ReadAtCursor(pcursor, ssKey, ssValue);
+            ret = ReadAtCursor(pcursor, ssKey, ssValue);
             if (ret == DB_NOTFOUND)
                 break;
             else if (ret != 0)

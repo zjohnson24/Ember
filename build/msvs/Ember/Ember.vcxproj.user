@@ -12,11 +12,11 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LocalDebuggerCommandArguments>-debug -datadir=%appdata%\EmberRelease -port=15724 -rpcport=15725</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-debug -datadir=C:\Users\AndrewBC\AppData\Roaming\EmberRelease -port=15724 -rpcport=15725</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>-debug -datadir=%appdata%\EmberRelease -port=15724 -rpcport=15725</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-debug -datadir=C:\Users\AndrewBC\AppData\Roaming\EmberRelease -port=15724 -rpcport=15725</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

@@ -215,17 +215,6 @@ protected:
         return (ret == 0);
     }
 
-    DBC *GetCursor()
-    {
-        if (!pdb)
-            return NULL;
-        DBC *pcursor = NULL;
-        int ret = pdb->cursor(pdb, NULL, &pcursor, 0);
-        if (ret != 0)
-            return NULL;
-        return pcursor;
-    }
-
     int ReadAtCursor(DBC *pcursor, CDataStream& ssKey, CDataStream& ssValue, unsigned int fFlags=DB_NEXT) {
 		DBT datKey = {0};
 		DBT datValue = { 0 };
