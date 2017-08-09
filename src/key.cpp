@@ -269,8 +269,7 @@ public:
     // This is only slightly more CPU intensive than just verifying it.
     // If this function succeeds, the recovered public key is guaranteed to be valid
     // (the signature is a valid signature of the given data for that key)
-    bool Recover(const uint256 &hash, const unsigned char *p64, int rec)
-    {
+    bool Recover(const uint256 &hash, const unsigned char *p64, int rec) {
         if (rec<0 || rec>=3)
             return false;
         ECDSA_SIG *sig = ECDSA_SIG_new();

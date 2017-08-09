@@ -516,15 +516,14 @@ bool AppInit2(boost::thread_group& threadGroup)
             }
         }
 
-        if (GetBoolArg("-salvagewallet", false))
-        {
+        if (GetBoolArg("-salvagewallet", false)) {
             // Recover readable keypairs:
-            //if (!CWalletDB::Recover(bitdb, strWalletFileName, true))
-                return false;
+			if (!CWalletDB::Recover(bitdb, strWalletFileName, true)) {
+				return false;
+			}
         }
 
-        if (filesystem::exists(GetDataDir() / strWalletFileName))
-        {
+        if (filesystem::exists(GetDataDir() / strWalletFileName)) {
 /*            CDBEnv::VerifyResult r = bitdb.Verify(strWalletFileName, CWalletDB::Recover);
             if (r == CDBEnv::RECOVER_OK)
             {
@@ -812,8 +811,9 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     {
         CAddrDB adb;
-        if (!adb.Read(addrman))
-            LogPrintf("Invalid or missing peers.dat; recreating\n");
+		if (!adb.Read(addrman)) {
+			LogPrintf("Invalid or missing peers.dat; recreating\n");
+		}
     }
 
     LogPrintf("Loaded %i addresses from peers.dat  %dms\n",

@@ -109,7 +109,7 @@ bool CDBEnv::Open(boost::filesystem::path pathEnv_) {
 					 DB_TXN_WRITE_NOSYNC,
                      S_IRUSR | S_IWUSR);
 	if (ret != 0) {
-		return error("CDB() : error %s (%d) opening database environment", db_strerror(ret), ret);
+		return error("CDB() : %s (%d) Opening database environment", db_strerror(ret), ret);
 	}
 
 	err_file_path = pathErrorFile.generic_string().c_str();
@@ -119,9 +119,9 @@ bool CDBEnv::Open(boost::filesystem::path pathEnv_) {
 	}
 	dbenv->set_errfile(dbenv, err_file_h);
 
-	if (0 != (ret = dbenv->set_memory_max(dbenv, 4, 0))) {
-		return error("CDB() : error %s (%d) opening database environment", db_strerror(ret), ret);
-	}
+	//if (0 != (ret = dbenv->set_memory_max(dbenv, 4, 0))) {
+	//	return error("CDB() : error %s (%d) setting max memory", db_strerror(ret), ret);
+	//}
 
 
 	int nDbCache = GetArg("-dbcache", 25);

@@ -1759,22 +1759,26 @@ bool CAddrDB::Write(const CAddrMan& addr)
 bool CAddrDB::Read(CAddrMan& addr) {
     // open input file, and associate with CAutoFile
     FILE *file = fopen((this->pathAddr).generic_string().c_str(), "rb");
+	if (NULL == file) {
+		return error("CAddrman::Read() : fopen failed");
+	}
     CAutoFile filein = CAutoFile(file, SER_DISK, CLIENT_VERSION);
-    if (!filein)
-        return error("CAddrman::Read() : open failed");
+	if (!filein) {
+		return error("CAddrman::Read() : open failed");
+	}
 
     // use file size to size memory buffer
     int fileSize = boost::filesystem::file_size(this->pathAddr);
     int dataSize = fileSize - sizeof(uint256);
     // Don't try to resize to a negative number if file is small
     if ( dataSize < 0 ) dataSize = 0;
-    std::vector<unsigned char> vchData;
-    vchData.resize(dataSize);
+    std::vector<char> vchData;
+    vchData.resize(dataSize, 0);
     uint256 hashIn;
 
     // read data and checksum from file
     try {
-        filein.read(reinterpret_cast<char*>(vchData.data()), dataSize);
+        filein.read((char *)&vchData[0], dataSize);
         filein >> hashIn;
     } catch (std::exception &e) {
         return error("CAddrman::Read() 2 : I/O error or stream data corrupted");
