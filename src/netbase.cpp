@@ -309,15 +309,13 @@ bool static ConnectSocketDirectly(const CService &addrConnect, SOCKET& hSocketRe
             fd_set fdset;
             FD_ZERO(&fdset);
             FD_SET(hSocket, &fdset);
-            int nRet = select(hSocket + 1, NULL, &fdset, NULL, &timeout);
-            if (nRet == 0)
-            {
+			int nRet;
+            if (0 == (nRet = select(hSocket + 1, NULL, &fdset, NULL, &timeout))) {
                 LogPrint("net", "connection to %s timeout\n", addrConnect.ToString());
                 closesocket(hSocket);
                 return false;
             }
-            if (nRet == SOCKET_ERROR)
-            {
+            if (nRet == SOCKET_ERROR) {
                 LogPrintf("select() for %s failed: %i\n", addrConnect.ToString(), WSAGetLastError());
                 closesocket(hSocket);
                 return false;

@@ -427,7 +427,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     if (mapArgs.count("-timeout"))
     {
-        int nNewTimeout = GetArg("-timeout", 5000);
+        int nNewTimeout = GetArg("-timeout", 120000);
         if (nNewTimeout > 0 && nNewTimeout < 600000)
             nConnectTimeout = nNewTimeout;
     }

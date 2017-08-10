@@ -365,58 +365,54 @@ bool CNode::RecvMsg(CNetMessage& msg) {
     while (true) {
 		buf_p = &buf[0];
         len = recv(this->hSocket, buf_p, sizeof(buf), MSG_DONTWAIT);
-        if (len > 0) {
-            while (len > 0) {
-                // absorb network data
-                if (!msg.in_data) {
-                    handled = msg.readHeader(buf_p, len);
-                    if (handled < 0) {
-                        LogPrint("net", "socket handled incorrectly on init\n");
-                        this->CloseSocketDisconnect();
-                        return false;
-                    }
-                } else {
-                    handled = msg.readData(buf_p, len);
-                    if (handled < 0) {
-                        LogPrint("net", "socket handled incorrectly on continuation\n");
-                        this->CloseSocketDisconnect();
-						return false;
-                    }
-                }
+		if (len == 0) {
+			 // socket closed
+			 boost::this_thread::interruption_point();
+			 if (!this->fDisconnect) {
+				 LogPrint("net", "socket closed\n");
+			 }
+			 this->CloseSocketDisconnect();
+			 return false;
+		} 
+		if (len < 0) {
+			// socket error
+			boost::this_thread::interruption_point();
+			int nErr = WSAGetLastError();
 
-                buf_p = (&buf[0])+handled;
-                len -= handled;
-
-                if (msg.complete()) {
-                    msg.nTime = GetTimeMicros();
-                }
-            }
-
-            this->nLastRecv = GetTime();
-            this->nRecvBytes += len;
-            this->RecordBytesRecv(len);
-            return true;
-        } else if (len == 0) {
-            // socket closed
-            boost::this_thread::interruption_point();
-            if (!this->fDisconnect) {
-                LogPrint("net", "socket closed\n");
-            }
-            this->CloseSocketDisconnect();
-            return false;
-        } else {
-            // socket error
-            boost::this_thread::interruption_point();
-            int nErr = WSAGetLastError();
-
-            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
-                if (!this->fDisconnect) {
-                    LogPrint("net", "recv failed: %d\n", nErr);
-                }
+			if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
+				if (!this->fDisconnect) {
+					LogPrint("net", "recv failed: %d\n", nErr);
+				}
+				this->CloseSocketDisconnect();
+			}
+			return false;
+		}
+        while (len > 0) {
+            // absorb network data
+            if (!msg.in_data) {
+                handled = msg.readHeader(buf_p, len);
+			} else {
+				handled = msg.readData(buf_p, len);
+			}
+            if (handled < 0) {
+                LogPrint("net", "socket handled incorrectly on init\n");
+				LogPrint("net", "socket handled incorrectly on continuation\n");
                 this->CloseSocketDisconnect();
+                return false;
             }
-            return false;
+
+            buf_p = buf_p+handled;
+            len -= handled;
+
+            if (msg.complete()) {
+                msg.nTime = GetTimeMicros();
+            }
         }
+
+        this->nLastRecv = GetTime();
+        this->nRecvBytes += len;
+        this->RecordBytesRecv(len);
+        return true;
     }
 }
 
@@ -733,8 +729,9 @@ void ThreadSocketHandler()
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes)
             {
-                if (pnode->hSocket == INVALID_SOCKET)
-                    continue;
+				if (pnode->hSocket == INVALID_SOCKET) {
+					continue;
+				}
                 {
                     TRY_LOCK(pnode->cs_vSend, lockSend);
                     if (lockSend) {
@@ -864,8 +861,9 @@ void ThreadSocketHandler()
             if (FD_ISSET(pnode->hSocket, &fdsetSend))
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
-                if (lockSend)
-                    SocketSendData(pnode);
+				if (lockSend) {
+					SocketSendData(pnode);
+				}
             }
 
             //
