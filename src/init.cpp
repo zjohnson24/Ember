@@ -44,6 +44,9 @@ unsigned int nMinerSleep;
 bool fUseFastIndex;
 enum Checkpoints::CPMode CheckpointsMode;
 
+bool fRegTest;
+bool fTestNet;
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // Shutdown
@@ -345,9 +348,25 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     nDerivationMethodIndex = 0;
 
-    if (!SelectParamsFromCommandLine()) {
-        return InitError("Invalid combination of -testnet and -regtest.");
-    }
+
+	fRegTest = GetBoolArg("-regtest", false);
+	fTestNet = GetBoolArg("-testnet", false);
+
+	if (fTestNet && fRegTest) {
+		InitError("Invalid combination of -testnet and -regtest.");
+		return false;
+	}
+
+	if (fRegTest) {
+		SelectParams(CChainParams::REGTEST);
+	} else if (fTestNet) {
+		SelectParams(CChainParams::TESTNET);		
+		mapMultiArgs["-addnode"].push_back("127.0.0.1:15724");
+		mapMultiArgs["-addnode"].push_back("127.0.0.1:15734");
+	} else {
+		SelectParams(CChainParams::MAIN);
+		mapMultiArgs["-addnode"].push_back("107.161.30.232:10024");
+	}
 
     if (mapArgs.count("-bind")) {
         // when specifying an explicit binding address, you want to listen on it
@@ -393,8 +412,6 @@ bool AppInit2(boost::thread_group& threadGroup)
             LogPrintf("AppInit2 : parameter interaction: -salvagewallet=1 -> setting -rescan=1\n");
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
-    // Add static ip of our nodes.
-    mapMultiArgs["-addnode"].push_back("addnode=104.236.150.155:10024");
 
     // ********************************************************* Step 3: parameter-to-internal-flags
 
@@ -404,9 +421,6 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (GetBoolArg("-nodebug", false) || find(categories.begin(), categories.end(), string("0")) != categories.end())
         fDebug = false;
 
-    // Check for -debugnet (deprecated)
-    if (GetBoolArg("-debugnet", false))
-        InitWarning(_("Warning: Deprecated argument -debugnet ignored, use -debug=net"));
     // Check for -socks - as this is a privacy risk to continue, exit here
     if (mapArgs.count("-socks"))
         return InitError(_("Error: Unsupported argument -socks found. Setting SOCKS version isn't possible anymore, only SOCKS5 proxies are supported."));
@@ -592,8 +606,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     fNameLookup = GetBoolArg("-dns", true);
 
     bool fBound = false;
-    if (!fNoListen)
-    {
+    if (!fNoListen) {
         std::string strError;
         if (mapArgs.count("-bind")) {
             BOOST_FOREACH(std::string strBind, mapMultiArgs["-bind"]) {
@@ -614,8 +627,7 @@ bool AppInit2(boost::thread_group& threadGroup)
             return InitError(_("Failed to listen on any port. Use -listen=0 if you want this."));
     }
 
-    if (mapArgs.count("-externalip"))
-    {
+    if (mapArgs.count("-externalip")) {
         BOOST_FOREACH(string strAddr, mapMultiArgs["-externalip"]) {
             CService addrLocal(strAddr, GetListenPort(), fNameLookup);
             if (!addrLocal.IsValid())
@@ -625,20 +637,18 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
 
 #ifdef ENABLE_WALLET
-    if (mapArgs.count("-reservebalance")) // ppcoin: reserve balance amount
-    {
-        if (!ParseMoney(mapArgs["-reservebalance"], nReserveBalance))
-        {
+    if (mapArgs.count("-reservebalance")) { // ppcoin: reserve balance amount
+        if (!ParseMoney(mapArgs["-reservebalance"], nReserveBalance)) {
             InitError(_("Invalid amount for -reservebalance=<amount>"));
             return false;
         }
     }
 #endif
 
-    if (mapArgs.count("-checkpointkey")) // ppcoin: checkpoint master priv key
-    {
-        if (!Checkpoints::SetCheckpointPrivKey(GetArg("-checkpointkey", "")))
-            InitError(_("Unable to sign checkpoint, wrong checkpointkey?\n"));
+    if (mapArgs.count("-checkpointkey")) { // ppcoin: checkpoint master priv key
+		if (!Checkpoints::SetCheckpointPrivKey(GetArg("-checkpointkey", ""))) {
+			InitError(_("Unable to sign checkpoint, wrong checkpointkey?\n"));
+		}
     }
 
     BOOST_FOREACH(string strDest, mapMultiArgs["-seednode"])
@@ -646,8 +656,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // ********************************************************* Step 7: load blockchain
 
-    if (GetBoolArg("-loadblockindextest", false))
-    {
+    if (GetBoolArg("-loadblockindextest", false)) {
         CTxDB txdb("r");
         txdb.LoadBlockIndex();
         PrintBlockTree();
@@ -664,21 +673,18 @@ bool AppInit2(boost::thread_group& threadGroup)
     // as LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill bitcoin-qt during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
-    if (fRequestShutdown)
-    {
+    if (fRequestShutdown) {
         LogPrintf("Shutdown requested. Exiting.\n");
         return false;
     }
     LogPrintf(" block index %15dms\n", GetTimeMillis() - nStart);
 
-    if (GetBoolArg("-printblockindex", false) || GetBoolArg("-printblocktree", false))
-    {
+    if (GetBoolArg("-printblockindex", false) || GetBoolArg("-printblocktree", false)) {
         PrintBlockTree();
         return false;
     }
 
-    if (mapArgs.count("-printblock"))
-    {
+    if (mapArgs.count("-printblock")) {
         string strMatch = mapArgs["-printblock"];
         int nFound = 0;
         for (map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.begin(); mi != mapBlockIndex.end(); ++mi)
@@ -809,23 +815,25 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     nStart = GetTimeMillis();
 
-    {
-        CAddrDB adb;
+	{
+		CAddrDB adb;
 		if (!adb.Read(addrman)) {
 			LogPrintf("Invalid or missing peers.dat; recreating\n");
 		}
-    }
 
-    LogPrintf("Loaded %i addresses from peers.dat  %dms\n",
-           addrman.size(), GetTimeMillis() - nStart);
+		LogPrintf("Loaded %i addresses from peers.dat  %dms\n",
+			addrman.size(), GetTimeMillis() - nStart);
+	}
 
     // ********************************************************* Step 11: start node
 
-    if (!CheckDiskSpace())
-        return false;
+	if (!CheckDiskSpace()) {
+		return false;
+	}
 
-    if (!strErrors.str().empty())
-        return InitError(strErrors.str());
+	if (!strErrors.str().empty()) {
+		return InitError(strErrors.str());
+	}
 
     RandAddSeedPerfmon();
 
@@ -843,15 +851,17 @@ bool AppInit2(boost::thread_group& threadGroup)
     // InitRPCMining is needed here so getwork/getblocktemplate in the GUI debug console works properly.
     InitRPCMining();
 #endif
-    if (fServer)
-        StartRPCThreads();
+	if (fServer) {
+		StartRPCThreads();
+	}
 
 #ifdef ENABLE_WALLET
     // Mine proof-of-stake blocks in the background
-    if (!GetBoolArg("-staking", true))
-        LogPrintf("Staking disabled\n");
-    else if (pwalletMain)
-        threadGroup.create_thread(boost::bind(&ThreadStakeMiner, pwalletMain));
+	if (!GetBoolArg("-staking", true)) {
+		LogPrintf("Staking disabled\n");
+	} else if (pwalletMain) {
+		threadGroup.create_thread(boost::bind(&ThreadStakeMiner, pwalletMain));
+	}
 #endif
 
     // ********************************************************* Step 12: finished

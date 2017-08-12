@@ -87,8 +87,7 @@ unsigned short GetListenPort()
 }
 
 // find 'best' local address for a particular peer
-bool GetLocal(CService& addr, const CNetAddr *paddrPeer)
-{
+bool GetLocal(CService& addr, const CNetAddr *paddrPeer) {
     if (fNoListen)
         return false;
 
@@ -146,8 +145,7 @@ bool IsPeerAddrLocalGood(CNode *pnode)
 // pushes our own address to a peer
 void AdvertizeLocal(CNode *pnode)
 {
-    if (!fNoListen && pnode->fSuccessfullyConnected)
-    {
+    if (!fNoListen && pnode->fSuccessfullyConnected) {
         CAddress addrLocal = GetLocalAddress(&pnode->addr);
         // If discovery is enabled, sometimes give our peer the address it
         // tells us that it sees us as in case it has a better idea of our
@@ -164,8 +162,7 @@ void AdvertizeLocal(CNode *pnode)
     }
 }
 
-void SetReachable(enum Network net, bool fFlag)
-{
+void SetReachable(enum Network net, bool fFlag) {
     LOCK(cs_mapLocalHost);
     vfReachable[net] = fFlag;
     if (net == NET_IPV6 && fFlag)
@@ -173,8 +170,7 @@ void SetReachable(enum Network net, bool fFlag)
 }
 
 // learn a new local address
-bool AddLocal(const CService& addr, int nScore)
-{
+bool AddLocal(const CService& addr, int nScore) {
     if (!addr.IsRoutable())
         return false;
 
@@ -200,8 +196,7 @@ bool AddLocal(const CService& addr, int nScore)
     return true;
 }
 
-bool AddLocal(const CNetAddr &addr, int nScore)
-{
+bool AddLocal(const CNetAddr &addr, int nScore) {
     return AddLocal(CService(addr, GetListenPort()), nScore);
 }
 
@@ -295,8 +290,7 @@ CNode* FindNode(const CService& addr)
     return NULL;
 }
 
-CNode* ConnectNode(CAddress addrConnect, const char *pszDest)
-{
+CNode* ConnectNode(CAddress addrConnect, const char *pszDest) {
     if (pszDest == NULL) {
         if (IsLocal(addrConnect))
             return NULL;
@@ -358,62 +352,56 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest)
 
 bool CNode::RecvMsg(CNetMessage& msg) {
     char buf[BUF_SIZE]; // typical socket buffer is 8K-64K
-	char *buf_p;
-    int len;
+	char *buf_p = &buf[0];
+    int len = sizeof(buf);
     int handled;
 
-    while (true) {
-		buf_p = &buf[0];
-        len = recv(this->hSocket, buf_p, sizeof(buf), MSG_DONTWAIT);
-		if (len == 0) {
-			 // socket closed
-			 boost::this_thread::interruption_point();
-			 if (!this->fDisconnect) {
-				 LogPrint("net", "socket closed\n");
-			 }
-			 this->CloseSocketDisconnect();
-			 return false;
-		} 
-		if (len < 0) {
-			// socket error
-			boost::this_thread::interruption_point();
-			int nErr = WSAGetLastError();
-
-			if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
-				if (!this->fDisconnect) {
-					LogPrint("net", "recv failed: %d\n", nErr);
-				}
-				this->CloseSocketDisconnect();
+    len = recv(hSocket, buf_p, len, MSG_DONTWAIT);
+	if (len < 0) {
+		int nErr = WSAGetLastError();
+		// socket error
+		boost::this_thread::interruption_point();
+		if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
+			if (!fDisconnect) {
+				LogPrint("net", "recv failed: (%d)\n", nErr);
 			}
-			return false;
+			CloseSocketDisconnect();
 		}
-        while (len > 0) {
-            // absorb network data
-            if (!msg.in_data) {
-                handled = msg.readHeader(buf_p, len);
-			} else {
-				handled = msg.readData(buf_p, len);
-			}
-            if (handled < 0) {
-                LogPrint("net", "socket handled incorrectly on init\n");
-				LogPrint("net", "socket handled incorrectly on continuation\n");
-                this->CloseSocketDisconnect();
-                return false;
-            }
-
-            buf_p = buf_p+handled;
-            len -= handled;
-
-            if (msg.complete()) {
-                msg.nTime = GetTimeMicros();
-            }
+		return false;
+	} else if (len == 0) {
+		// socket closed
+		boost::this_thread::interruption_point();
+		if (!fDisconnect) {
+			LogPrint("net", "socket closed\n");
+		}
+		CloseSocketDisconnect();
+		return false;
+	}
+    while (len > 0) {
+        // absorb network data
+        if (!msg.in_data) {
+            handled = msg.readHeader(buf_p, len);
+		} else {
+			handled = msg.readData(buf_p, len);
+		}
+        if (handled < 0) {
+			LogPrint("net", "socket handled incorrectly on continuation\n");
+            CloseSocketDisconnect();
+            return false;
         }
 
-        this->nLastRecv = GetTime();
-        this->nRecvBytes += len;
-        this->RecordBytesRecv(len);
-        return true;
+        buf_p = buf_p+handled;
+        len -= handled;
+
+        if (msg.complete()) {
+            msg.nTime = GetTimeMicros();
+        }
     }
+
+    nLastRecv = GetTime();
+    nRecvBytes += len;
+    RecordBytesRecv(len);
+    return true;
 }
 
 

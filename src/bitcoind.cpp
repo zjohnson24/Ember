@@ -70,10 +70,23 @@ bool AppInit(int argc, char* argv[])
 
         if (fCommandLine)
         {
-            if (!SelectParamsFromCommandLine()) {
-                fprintf(stderr, "Error: invalid combination of -regtest and -testnet.\n");
-                return false;
-            }
+			bool fRegTest = GetBoolArg("-regtest", false);
+			bool fTestNet = GetBoolArg("-testnet", false);
+
+			if (fTestNet && fRegTest) {
+				fprintf(stderr, "Error: invalid combination of -regtest and -testnet.\n");
+			}
+
+			if (fRegTest) {
+				SelectParams(CChainParams::REGTEST);
+			}
+			else if (fTestNet) {
+				SelectParams(CChainParams::TESTNET);
+			}
+			else {
+				SelectParams(CChainParams::MAIN);
+			}
+            
             int ret = CommandLineRPC(argc, argv);
             exit(ret);
         }
