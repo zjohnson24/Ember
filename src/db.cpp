@@ -77,8 +77,6 @@ bool CDBEnv::Open(boost::filesystem::path pathEnv_) {
 		return true;
 	}
 
-    boost::this_thread::interruption_point();
-
     pathEnv = pathEnv_;
     filesystem::path pathDataDir = pathEnv;
     strPath = pathDataDir.generic_string();
@@ -131,8 +129,6 @@ void CDBEnv::MakeMock()
 {
     if (fDbEnvInit)
         throw runtime_error("CDBEnv::MakeMock(): already initialized");
-
-    boost::this_thread::interruption_point();
 
     LogPrint("db", "CDBEnv::MakeMock()\n");
 
@@ -514,101 +510,93 @@ bool CDBEnv::RemoveDb(const string& strFile) {
 
 bool CDB::Rewrite(const string& strFile, const char* pszSkip) {
 	int ret;
+	char tmp[32] = { 0 };
+    while (true) {
+        if (!bitdb.mapFileUseCount.count(strFile) || bitdb.mapFileUseCount[strFile] == 0) {
+            // Flush log data to the dat file
+            bitdb.CloseDb(strFile);
+            bitdb.CheckpointLSN(strFile);
+            bitdb.mapFileUseCount.erase(strFile);
 
-    while (true)
-    {
-        {
-            LOCK(bitdb.cs_db);
-            if (!bitdb.mapFileUseCount.count(strFile) || bitdb.mapFileUseCount[strFile] == 0)
-            {
-                // Flush log data to the dat file
-                bitdb.CloseDb(strFile);
-                bitdb.CheckpointLSN(strFile);
-                bitdb.mapFileUseCount.erase(strFile);
+            bool fSuccess = true;
+            LogPrintf("Rewriting %s...\n", strFile);
+            string strFileRes = strFile + ".rewrite";
+            { // surround usage of db with extra {}
+                CDB db(strFile.c_str(), "r");
+				DB *pdbCopy;
+				if (0 != (ret = db_create(&pdbCopy, bitdb.dbenv, 0))) {
+					LogPrintf("Verify Failed for: %s\n", strFile.c_str());
+					fSuccess = false;
+					goto start_loop;
+				}
 
-                bool fSuccess = true;
-                LogPrintf("Rewriting %s...\n", strFile);
-                string strFileRes = strFile + ".rewrite";
-                { // surround usage of db with extra {}
-                    CDB db(strFile.c_str(), "r");
-					DB *pdbCopy;
-					if (0 != (ret = db_create(&pdbCopy, bitdb.dbenv, 0))) {
-						LogPrintf("Verify Failed for: %s\n", strFile.c_str());
-						fSuccess = false;
-						goto start_loop;
-					}
-
-                    ret = pdbCopy->open(pdbCopy,
-											NULL,                 // Txn pointer
-                                            strFileRes.c_str(),   // Filename
-                                            "main",    // Logical db name
-                                            DB_BTREE,  // Database type
-                                            DB_CREATE,    // Flags
-                                            0);
-                    if (ret > 0) {
-                        LogPrintf("Cannot create database file %s\n", strFileRes);
-                        fSuccess = false;
-						goto start_loop;
-                    }
+                ret = pdbCopy->open(pdbCopy,
+										NULL,                 // Txn pointer
+                                        strFileRes.c_str(),   // Filename
+                                        "main",    // Logical db name
+                                        DB_BTREE,  // Database type
+                                        DB_CREATE,    // Flags
+                                        0);
+                if (ret > 0) {
+                    LogPrintf("Cannot create database file %s\n", strFileRes);
+                    fSuccess = false;
+					goto start_loop;
+                }
 start_loop:
 
-					DBC *pcursor = NULL;
-					if (0 != (ret = db.pdb->cursor(db.pdb, NULL, &pcursor, 0))) {
-						while (fSuccess) {
-							CDataStream ssKey(SER_DISK, CLIENT_VERSION);
-							CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-							int ret = db.ReadAtCursor(pcursor, ssKey, ssValue, DB_NEXT);
-							if (ret == DB_NOTFOUND) {
-								pcursor->close(pcursor);
-								break;
-							}
-							else if (ret != 0) {
-								pcursor->close(pcursor);
-								fSuccess = false;
-								break;
-							}
-							if (pszSkip &&
-								strncmp(&ssKey[0], pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
-								continue;
-							if (strncmp(&ssKey[0], "\x07version", 8) == 0)
-							{
-								// Update version:
-								ssValue.clear();
-								ssValue << CLIENT_VERSION;
-							}
-							DBT datKey = DBT{ &ssKey[0], (uint32_t)ssKey.size() };
-							DBT datValue = DBT{ &ssValue[0], (uint32_t)ssValue.size() };
-							int ret2 = pdbCopy->put(pdbCopy, NULL, &datKey, &datValue, DB_NOOVERWRITE);
-							if (ret2 > 0)
-								fSuccess = false;
-						}
-					}
-                    if (fSuccess) {
-                        db.Close();
-                        bitdb.CloseDb(strFile);
-						if (pdbCopy->close(pdbCopy, 0)) {
+				DBC *pcursor = NULL;
+				if (0 != (ret = db.pdb->cursor(db.pdb, NULL, &pcursor, 0))) {
+					while (fSuccess) {
+						DBT datKey = { 0 };
+						DBT datValue = { 0 };
+						int ret = db.ReadAtCursor(pcursor, datKey, datValue, DB_NEXT);
+						if (ret == DB_NOTFOUND) {
+							pcursor->close(pcursor);
+							break;
+						} else if (ret != 0) {
+							pcursor->close(pcursor);
 							fSuccess = false;
+							break;
 						}
-						pdbCopy = NULL;
-                    }
-                }
+						if (pszSkip &&
+							strncmp((char*)datKey.data, pszSkip, std::min(datKey.size, strlen(pszSkip))) == 0) {
+							continue;
+						}
+						if (strncmp((char*)datKey.data, "\x07version", 8) == 0) {
+							// Update version:
+							sprintf(&tmp[0], "%d", CLIENT_VERSION);
+							datValue.data = &tmp[0];
+							datValue.size = strlen(&tmp[0]);
+						}
+						int ret2 = pdbCopy->put(pdbCopy, NULL, &datKey, &datValue, DB_NOOVERWRITE);
+						if (ret2 > 0)
+							fSuccess = false;
+					}
+				}
                 if (fSuccess) {
-					DB *dbA, *dbB;
-					ret = db_create(&dbA, bitdb.dbenv, 0);
-					if (ret != 0 && dbA->remove(dbA, strFile.c_str(), NULL, 0)) {
+                    db.Close();
+                    bitdb.CloseDb(strFile);
+					if (pdbCopy->close(pdbCopy, 0)) {
 						fSuccess = false;
 					}
-                    ret = db_create(&dbB, bitdb.dbenv, 0);
-					if (ret != 0 && dbB->rename(dbB, strFileRes.c_str(), NULL, strFile.c_str(), 0)) {
-						fSuccess = false;
-					}
+					pdbCopy = NULL;
                 }
-                if (!fSuccess)
-                    LogPrintf("Rewriting of %s FAILED!\n", strFileRes);
-                return fSuccess;
             }
+            if (fSuccess) {
+				DB *dbA, *dbB;
+				ret = db_create(&dbA, bitdb.dbenv, 0);
+				if (ret != 0 && dbA->remove(dbA, strFile.c_str(), NULL, 0)) {
+					fSuccess = false;
+				}
+                ret = db_create(&dbB, bitdb.dbenv, 0);
+				if (ret != 0 && dbB->rename(dbB, strFileRes.c_str(), NULL, strFile.c_str(), 0)) {
+					fSuccess = false;
+				}
+            }
+            if (!fSuccess)
+                LogPrintf("Rewriting of %s FAILED!\n", strFileRes);
+            return fSuccess;
         }
-        MilliSleep(100);
     }
     return false;
 }

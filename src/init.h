@@ -7,15 +7,12 @@
 
 #include "wallet.h"
 
-namespace boost {
-    class thread_group;
-} // namespace boost
-
 extern CWallet* pwalletMain;
 void StartShutdown();
 bool ShutdownRequested();
 void Shutdown();
-bool AppInit2(boost::thread_group& threadGroup);
+bool AppInit();
 std::string HelpMessage();
 
+extern std::vector<*coro_context> fiberGroup;
 #endif

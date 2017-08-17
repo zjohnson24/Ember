@@ -819,13 +819,11 @@ public:
     int64_t nOrderPos;  // position in ordered transaction list
     uint64_t nEntryNo;
 
-    CAccountingEntry()
-    {
+    CAccountingEntry() {
         SetNull();
     }
 
-    void SetNull()
-    {
+    void SetNull() {
         nCreditDebit = 0;
         nTime = 0;
         strAccount.clear();

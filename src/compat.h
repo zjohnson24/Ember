@@ -6,14 +6,17 @@
 #define _BITCOIN_COMPAT_H 1
 
 #ifdef _WIN32
-#define _WIN32_WINNT 0x0501
-#define WIN32_LEAN_AND_MEAN 1
+#define _WIN32_WINNT 0x0600
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+#define WIN32_LEAN_AND_MEAN 1
+#include <windows.h>
 #include <winsock2.h>
 #include <mswsock.h>
 #include <ws2tcpip.h>
+#include <mstcpip.h>
+#pragma comment(lib,"ws2_32")
 #else
 #include <sys/types.h>
 #include <sys/socket.h>

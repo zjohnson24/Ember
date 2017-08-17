@@ -6,7 +6,6 @@
 #define BITCOIN_KEYSTORE_H
 
 #include "key.h"
-#include "sync.h"
 #include <boost/signals2/signal.hpp>
 
 class CScript;
@@ -14,9 +13,6 @@ class CScript;
 /** A virtual base class for key stores */
 class CKeyStore
 {
-protected:
-    mutable CCriticalSection cs_KeyStore;
-
 public:
     virtual ~CKeyStore() {}
 
@@ -48,39 +44,24 @@ protected:
 
 public:
     bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey);
-    bool HaveKey(const CKeyID &address) const
-    {
-        bool result;
-        {
-            LOCK(cs_KeyStore);
-            result = (mapKeys.count(address) > 0);
-        }
-        return result;
+    bool HaveKey(const CKeyID &address) const {
+		return (mapKeys.count(address) > 0);
     }
-    void GetKeys(std::set<CKeyID> &setAddress) const
-    {
+    void GetKeys(std::set<CKeyID> &setAddress) const {
         setAddress.clear();
-        {
-            LOCK(cs_KeyStore);
-            KeyMap::const_iterator mi = mapKeys.begin();
-            while (mi != mapKeys.end())
-            {
-                setAddress.insert((*mi).first);
-                mi++;
-            }
+        KeyMap::const_iterator mi = mapKeys.begin();
+        while (mi != mapKeys.end()) {
+            setAddress.insert((*mi).first);
+            mi++;
         }
     }
-    bool GetKey(const CKeyID &address, CKey &keyOut) const
-    {
-        {
-            LOCK(cs_KeyStore);
-            KeyMap::const_iterator mi = mapKeys.find(address);
-            if (mi != mapKeys.end())
-            {
-                keyOut = mi->second;
-                return true;
-            }
+    bool GetKey(const CKeyID &address, CKey &keyOut) const {
+        KeyMap::const_iterator mi = mapKeys.find(address);
+        if (mi != mapKeys.end()) {
+            keyOut = mi->second;
+            return true;
         }
+        
         return false;
     }
     virtual bool AddCScript(const CScript& redeemScript);

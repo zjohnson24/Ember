@@ -153,6 +153,7 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ConsoleApplication1</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <ProjectName>emberd</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -203,6 +204,8 @@
     <LinkIncremental>true</LinkIncremental>
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -213,13 +216,15 @@
     <LinkIncremental>false</LinkIncremental>
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
-    <TargetName>emberd</TargetName>
+    <TargetName>$(ProjectName)</TargetName>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
-    <TargetName>emberd</TargetName>
+    <TargetName>$(ProjectName)</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -227,9 +232,10 @@
       <WarningLevel>Level1</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>ENABLE_WALLET=1;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\projects\Ember\dependencies\db-5.3.28.NC\build_windows;E:\projects\Ember\dependencies\libressl-2.5.5\include;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtGui;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtCore;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtWidgets;E:\projects\Ember\dependencies\boost_1_64_0;%(AdditionalIncludeDirectories);E:\projects\Ember\src</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>E:\projects\Ember\include;E:\projects\Ember\include\bdb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -256,7 +262,7 @@ copy /Y "$(SolutionDir)..\..\dll\$(Platform)\libcrypto-41.dll" "$(TargetDir)libc
       <WarningLevel>Level1</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>ENABLE_WALLET=1;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\projects\Ember\dependencies\db-5.3.28.NC\build_windows;E:\projects\Ember\dependencies\libressl-2.5.5\include;E:\projects\Ember\dependencies\boost_1_64_0;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtWidgets;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtCore;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtGui;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\*;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include;%(AdditionalIncludeDirectories);E:\projects\Ember\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\projects\Ember\include;E:\projects\Ember\include\bdb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -287,9 +293,10 @@ copy /Y "$(SolutionDir)..\..\dll\$(Platform)\libcrypto-41.dll" "$(TargetDir)libc
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>ENABLE_WALLET=1;WIN32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\projects\Ember\dependencies\db-5.3.28.NC\build_windows;E:\projects\Ember\dependencies\libressl-2.5.5\include;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtGui;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtCore;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\QtWidgets;E:\projects\Ember\dependencies\boost_1_64_0;E:\Qt\Qt5.7.0\5.7\winrt_x86_msvc2015\include\*;%(AdditionalIncludeDirectories);E:\projects\Ember\src</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>E:\projects\Ember\include;E:\projects\Ember\include\bdb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -320,7 +327,7 @@ copy /Y "$(SolutionDir)..\..\dll\$(Platform)\libcrypto-41.dll" "$(TargetDir)libc
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>ENABLE_WALLET=1;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\projects\Ember\dependencies\leveldb-windows\include;E:\projects\Ember\dependencies\db-5.3.28.NC\build_windows;E:\projects\Ember\dependencies\libressl-2.5.5\include;E:\projects\Ember\dependencies\boost_1_64_0;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtWidgets;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtCore;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtGui;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include\QtWidgets;E:\Qt\Qt5.7.0\5.7\winrt_x64_msvc2015\include;%(AdditionalIncludeDirectories);E:\projects\Ember\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\projects\Ember\include;E:\projects\Ember\include\bdb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>

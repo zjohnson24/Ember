@@ -182,6 +182,7 @@ int64_t CWalletDB::GetAccountCreditDebit(const string& strAccount)
 void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountingEntry>& entries)
 {
 	int ret;
+	string tmp;
     bool fAllAccounts = (strAccount == "*");
 
 	DBC *pcursor = NULL;
@@ -190,14 +191,20 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
 	}
         
     unsigned int fFlags = DB_SET_RANGE;
-    while (true)
-    {
+    while (true) {
         // Read next record
-        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
-        if (fFlags == DB_SET_RANGE)
-            ssKey << boost::make_tuple(string("acentry"), (fAllAccounts? string("") : strAccount), uint64_t(0));
-        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-        ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+		DBT datKey = { 0 };
+		DBT datValue = { 0 };
+		if (fFlags == DB_SET_RANGE) {
+			if (fAllAccounts) {
+				sprintf(&tmp[0], "(acentry %d)", (uint64_t)0);
+			} else {
+				sprintf(&tmp[0], "(acentry %s %d)", strAccount, (uint64_t)0);
+			}
+			datKey.data = &tmp[0];
+			datKey.size = strlen(&tmp[0]);
+		}
+        ret = ReadAtCursor(pcursor, datKey, datValue, fFlags);
         fFlags = DB_NEXT;
 		if (ret == DB_NOTFOUND) {
 			break;
@@ -207,17 +214,16 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
         }
 
         // Unserialize
-        string strType;
-        ssKey >> strType;
-        if (strType != "acentry")
-            break;
+		if (0 != strcmp((char*)datKey.data, "acentry")) {
+			break;
+		}
         CAccountingEntry acentry;
-        ssKey >> acentry.strAccount;
+		acentry.strAccount.assign((char*)datKey.data, datKey.size);
         if (!fAllAccounts && acentry.strAccount != strAccount)
             break;
 
-        ssValue >> acentry;
-        ssKey >> acentry.nEntryNo;
+        acentry.strAccount.insert(acentry.strAccount.length(), (char*)datValue.data);
+		acentry.nEntryNo = datKey;
         entries.push_back(acentry);
     }
 

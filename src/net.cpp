@@ -28,9 +28,9 @@
 using namespace std;
 using namespace boost;
 
-static const int MAX_OUTBOUND_CONNECTIONS = 16;
+static const int MAX_OUTBOUND_CONNECTIONS = 128;
 
-bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
+bool OpenNetworkConnection(const CAddress& addrConnect, const char *strDest = NULL, bool fOneShot = false);
 
 
 struct LocalServiceInfo {
@@ -43,7 +43,6 @@ struct LocalServiceInfo {
 //
 bool fDiscover = true;
 uint64_t nLocalServices = NODE_NETWORK;
-static CCriticalSection cs_mapLocalHost;
 static map<CNetAddr, LocalServiceInfo> mapLocalHost;
 static bool vfReachable[NET_MAX] = {};
 static bool vfLimited[NET_MAX] = {};
@@ -54,30 +53,19 @@ static std::vector<SOCKET> vhListenSocket;
 CAddrMan addrman;
 
 vector<CNode*> vNodes;
-CCriticalSection cs_vNodes;
 map<CInv, CDataStream> mapRelay;
 deque<pair<int64_t, CInv> > vRelayExpiration;
-CCriticalSection cs_mapRelay;
 map<CInv, int64_t> mapAlreadyAskedFor;
-
 static deque<string> vOneShots;
-CCriticalSection cs_vOneShots;
-
 set<CNetAddr> setservAddNodeAddresses;
-CCriticalSection cs_setservAddNodeAddresses;
-
 vector<std::string> vAddedNodes;
-CCriticalSection cs_vAddedNodes;
-
-static CSemaphore *semOutbound = NULL;
 
 // Signals for message handling
 static CNodeSignals g_signals;
 CNodeSignals& GetNodeSignals() { return g_signals; }
 
-void AddOneShot(string strDest)
-{
-    LOCK(cs_vOneShots);
+void AddOneShot(string strDest) {
+
     vOneShots.push_back(strDest);
 }
 
@@ -93,20 +81,19 @@ bool GetLocal(CService& addr, const CNetAddr *paddrPeer) {
 
     int nBestScore = -1;
     int nBestReachability = -1;
+
+    for (map<CNetAddr, LocalServiceInfo>::iterator it = mapLocalHost.begin(); it != mapLocalHost.end(); it++)
     {
-        LOCK(cs_mapLocalHost);
-        for (map<CNetAddr, LocalServiceInfo>::iterator it = mapLocalHost.begin(); it != mapLocalHost.end(); it++)
+        int nScore = (*it).second.nScore;
+        int nReachability = (*it).first.GetReachabilityFrom(paddrPeer);
+        if (nReachability > nBestReachability || (nReachability == nBestReachability && nScore > nBestScore))
         {
-            int nScore = (*it).second.nScore;
-            int nReachability = (*it).first.GetReachabilityFrom(paddrPeer);
-            if (nReachability > nBestReachability || (nReachability == nBestReachability && nScore > nBestScore))
-            {
-                addr = CService((*it).first, (*it).second.nPort);
-                nBestReachability = nReachability;
-                nBestScore = nScore;
-            }
+            addr = CService((*it).first, (*it).second.nPort);
+            nBestReachability = nReachability;
+            nBestScore = nScore;
         }
     }
+    
     return nBestScore >= 0;
 }
 
@@ -114,8 +101,7 @@ bool GetLocal(CService& addr, const CNetAddr *paddrPeer) {
 // Otherwise, return the unroutable 0.0.0.0 but filled in with
 // the normal parameters, since the IP may be changed to a useful
 // one by discovery.
-CAddress GetLocalAddress(const CNetAddr *paddrPeer)
-{
+CAddress GetLocalAddress(const CNetAddr *paddrPeer) {
     CAddress ret(CService("0.0.0.0",GetListenPort()),0);
     CService addr;
     if (GetLocal(addr, paddrPeer))
@@ -127,9 +113,7 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer)
     return ret;
 }
 
-int GetnScore(const CService& addr)
-{
-    LOCK(cs_mapLocalHost);
+int GetnScore(const CService& addr) {
     if (mapLocalHost.count(addr) == LOCAL_NONE)
         return 0;
     return mapLocalHost[addr].nScore;
@@ -163,10 +147,10 @@ void AdvertizeLocal(CNode *pnode)
 }
 
 void SetReachable(enum Network net, bool fFlag) {
-    LOCK(cs_mapLocalHost);
     vfReachable[net] = fFlag;
-    if (net == NET_IPV6 && fFlag)
-        vfReachable[NET_IPV4] = true;
+	if (net == NET_IPV6 && fFlag) {
+		vfReachable[NET_IPV4] = true;
+	}
 }
 
 // learn a new local address
@@ -181,17 +165,13 @@ bool AddLocal(const CService& addr, int nScore) {
         return false;
 
     LogPrintf("AddLocal(%s,%i)\n", addr.ToString(), nScore);
-
-    {
-        LOCK(cs_mapLocalHost);
-        bool fAlready = mapLocalHost.count(addr) > 0;
-        LocalServiceInfo &info = mapLocalHost[addr];
-        if (!fAlready || nScore >= info.nScore) {
-            info.nScore = nScore + (fAlready ? 1 : 0);
-            info.nPort = addr.GetPort();
-        }
-        SetReachable(addr.GetNetwork());
+    bool fAlready = mapLocalHost.count(addr) > 0;
+    LocalServiceInfo &info = mapLocalHost[addr];
+    if (!fAlready || nScore >= info.nScore) {
+        info.nScore = nScore + (fAlready ? 1 : 0);
+        info.nPort = addr.GetPort();
     }
+    SetReachable(addr.GetNetwork());
 
     return true;
 }
@@ -203,15 +183,13 @@ bool AddLocal(const CNetAddr &addr, int nScore) {
 /** Make a particular network entirely off-limits (no automatic connects to it) */
 void SetLimited(enum Network net, bool fLimited)
 {
-    if (net == NET_UNROUTABLE)
-        return;
-    LOCK(cs_mapLocalHost);
+	if (net == NET_UNROUTABLE) {
+		return;
+	}
     vfLimited[net] = fLimited;
 }
 
-bool IsLimited(enum Network net)
-{
-    LOCK(cs_mapLocalHost);
+bool IsLimited(enum Network net) {
     return vfLimited[net];
 }
 
@@ -1012,8 +990,7 @@ void MapPort(bool)
 
 
 
-void ThreadDNSAddressSeed()
-{
+void ThreadDNSAddressSeed(void * _) {
     // goal: only query DNS seeds if address need is acute
     if ((addrman.size() > 0) &&
         (!GetBoolArg("-forcednsseed", false))) {
@@ -1264,12 +1241,11 @@ void ThreadOpenAddedConnections()
 }
 
 // if successful, this moves the passed grant to the constructed node
-bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound, const char *strDest, bool fOneShot)
+bool OpenNetworkConnection(const CAddress& addrConnect, const char *strDest, bool fOneShot)
 {
     //
     // Initiate outbound network connection
     //
-    boost::this_thread::interruption_point();
     if (!strDest)
         if (IsLocal(addrConnect) ||
             FindNode((CNetAddr)addrConnect) || CNode::IsBanned(addrConnect) ||
@@ -1279,12 +1255,9 @@ bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOu
         return false;
 
     CNode* pnode = ConnectNode(addrConnect, strDest);
-    boost::this_thread::interruption_point();
 
     if (!pnode)
         return false;
-    if (grantOutbound)
-        grantOutbound->MoveTo(pnode->grantOutbound);
     pnode->fNetworkNode = true;
     if (fOneShot)
         pnode->fOneShot = true;
@@ -1330,22 +1303,17 @@ void static StartSync(const vector<CNode*> &vNodes) {
     }
 }
 
-void ThreadMessageHandler()
-{
+void ThreadMessageHandler() {
     SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
-    while (true)
-    {
+    while (true) {
         bool fHaveSyncNode = false;
 
-        vector<CNode*> vNodesCopy;
-        {
-            LOCK(cs_vNodes);
-            vNodesCopy = vNodes;
-            BOOST_FOREACH(CNode* pnode, vNodesCopy) {
-                pnode->AddRef();
-                if (pnode == pnodeSync)
-                    fHaveSyncNode = true;
-            }
+        vector<CNode*> vNodesCopy; 
+        vNodesCopy = vNodes;
+        BOOST_FOREACH(CNode* pnode, vNodesCopy) {
+            pnode->AddRef();
+            if (pnode == pnodeSync)
+                fHaveSyncNode = true;
         }
 
         if (!fHaveSyncNode)
@@ -1364,41 +1332,25 @@ void ThreadMessageHandler()
                 continue;
 
             // Receive messages
-            {
-                TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
-                if (lockRecv)
-                {
-                    if (!g_signals.ProcessMessages(pnode))
-                        pnode->CloseSocketDisconnect();
+            
+			if (!g_signals.ProcessMessages(pnode)) {
+				pnode->CloseSocketDisconnect();
+			}
 
-                    if (pnode->nSendSize < SendBufferSize())
-                    {
-                        if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
-                        {
-                            fSleep = false;
-                        }
-                    }
+            if (pnode->nSendSize < SendBufferSize()) {
+                if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete())) {
+                    fSleep = false;
                 }
             }
-            boost::this_thread::interruption_point();
+
 
             // Send messages
-            {
-                TRY_LOCK(pnode->cs_vSend, lockSend);
-                if (lockSend)
-                    g_signals.SendMessages(pnode, pnode == pnodeTrickle);
-            }
-            boost::this_thread::interruption_point();
+            g_signals.SendMessages(pnode, pnode == pnodeTrickle);
         }
 
-        {
-            LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode* pnode, vNodesCopy)
-                pnode->Release();
-        }
-
-        if (fSleep)
-            MilliSleep(100);
+		BOOST_FOREACH(CNode* pnode, vNodesCopy) {
+			pnode->Release();
+		}
     }
 }
 
@@ -1407,8 +1359,7 @@ void ThreadMessageHandler()
 
 
 
-bool BindListenPort(const CService &addrBind, string& strError)
-{
+bool BindListenPort(const CService &addrBind, string& strError) {
     strError = "";
     int nOne = 1;
 
@@ -1512,21 +1463,18 @@ bool BindListenPort(const CService &addrBind, string& strError)
     return true;
 }
 
-void static Discover(boost::thread_group& threadGroup)
-{
-    if (!fDiscover)
-        return;
+void static Discover() {
+	if (!fDiscover) {
+		return;
+	}
 
-#ifdef WIN32
+#ifdef _WIN32
     // Get local host IP
     char pszHostName[1000] = "";
-    if (gethostname(pszHostName, sizeof(pszHostName)) != SOCKET_ERROR)
-    {
+    if (gethostname(pszHostName, sizeof(pszHostName)) != SOCKET_ERROR) {
         vector<CNetAddr> vaddr;
-        if (LookupHost(pszHostName, vaddr))
-        {
-            BOOST_FOREACH (const CNetAddr &addr, vaddr)
-            {
+        if (LookupHost(pszHostName, vaddr)) {
+            BOOST_FOREACH (const CNetAddr &addr, vaddr) {
                 AddLocal(addr, LOCAL_IF);
             }
         }
@@ -1563,27 +1511,20 @@ void static Discover(boost::thread_group& threadGroup)
 
 }
 
-void StartNode(boost::thread_group& threadGroup)
-{
-    if (semOutbound == NULL) {
-        // initialize semaphore
-        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 125));
-        semOutbound = new CSemaphore(nMaxOutbound);
-    }
+void StartNode(std::vector<coro_context> &fiberGroup) {
+    int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 512));
+	if (pnodeLocalHost == NULL) {
+		pnodeLocalHost = new CNode(INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), nLocalServices));
+	}
 
-    if (pnodeLocalHost == NULL)
-        pnodeLocalHost = new CNode(INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), nLocalServices));
+    Discover();
 
-    Discover(threadGroup);
-
-    //
-    // Start threads
-    //
-
-    if (!GetBoolArg("-dnsseed", true))
-        LogPrintf("DNS seeding disabled\n");
-    else
-        threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "dnsseed", &ThreadDNSAddressSeed));
+	if (!GetBoolArg("-dnsseed", true)) {
+		LogPrintf("DNS seeding disabled\n");
+	} else {
+		fiberGroup.push_back(coro_context());
+		coro_create(fiberGroup.back(), (coro_func)&ThreadDNSAddressSeed, NULL, NULL, 0); // dnsseed
+	}
 
 #ifdef USE_UPNP
     // Map ports with UPnP
@@ -1591,19 +1532,24 @@ void StartNode(boost::thread_group& threadGroup)
 #endif
 
     // Send and receive from sockets, accept connections
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "net", &ThreadSocketHandler));
+	fiberGroup.push_back(coro_context());
+	coro_create(fiberGroup.back(), (coro_func)&ThreadSocketHandler, NULL, NULL, 0); // net
 
     // Initiate outbound connections from -addnode
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "addcon", &ThreadOpenAddedConnections));
+	fiberGroup.push_back(coro_context());
+	coro_create(fiberGroup.back(), (coro_func)&ThreadOpenAddedConnections, NULL, NULL, 0); // addcon
 
     // Initiate outbound connections
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "opencon", &ThreadOpenConnections));
+	fiberGroup.push_back(coro_context());
+	coro_create(fiberGroup.back(), (coro_func)&ThreadOpenConnections, NULL, NULL, 0); // opencon
 
     // Process messages
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "msghand", &ThreadMessageHandler));
+	fiberGroup.push_back(coro_context());
+	coro_create(fiberGroup.back(), (coro_func)&ThreadMessageHandler, NULL, NULL, 0); // msghand
 
     // Dump network addresses
-    threadGroup.create_thread(boost::bind(&LoopForever<void (*)()>, "dumpaddr", &DumpAddresses, DUMP_ADDRESSES_INTERVAL * 1000));
+	fiberGroup.push_back(coro_context());
+	coro_create(fiberGroup.back(), (coro_func)&DumpAddresses, NULL, NULL, 0); // dumpaddr // LOOP (DUMP_ADDRESSES_INTERVAL * 1000)
 }
 
 bool StopNode()

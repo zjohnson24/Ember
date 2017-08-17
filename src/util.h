@@ -14,6 +14,7 @@
 
 #include "serialize.h"
 #include "tinyformat.h"
+#include "compat.h"
 
 #include <map>
 #include <list>
@@ -21,7 +22,6 @@
 #include <vector>
 #include <string>
 
-#include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/date_time/gregorian/gregorian_types.hpp>
@@ -73,17 +73,6 @@ T* alignup(T* p)
 #else
 #define MAX_PATH            1024
 #endif
-
-inline void MilliSleep(int64_t n)
-{
-#if BOOST_VERSION >= 105000
-    boost::this_thread::sleep_for(boost::chrono::milliseconds(n));
-#else
-    boost::this_thread::sleep(boost::posix_time::milliseconds(n));
-#endif
-}
-
-
 
 extern std::map<std::string, std::string> mapArgs;
 extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
@@ -187,13 +176,6 @@ void SetMockTime(int64_t nMockTimeIn);
 std::string FormatFullVersion();
 std::string FormatSubVersion(const std::string& name, int nClientVersion, const std::vector<std::string>& comments);
 void runCommand(std::string strCommand);
-
-
-
-
-
-
-
 
 
 inline std::string i64tostr(int64_t n)
@@ -497,62 +479,6 @@ inline uint32_t ByteReverse(uint32_t value)
 {
     value = ((value & 0xFF00FF00) >> 8) | ((value & 0x00FF00FF) << 8);
     return (value<<16) | (value>>16);
-}
-
-// Standard wrapper for do-something-forever thread functions.
-// "Forever" really means until the thread is interrupted.
-// Use it like:
-//   new boost::thread(boost::bind(&LoopForever<void (*)()>, "dumpaddr", &DumpAddresses, 900000));
-// or maybe:
-//    boost::function<void()> f = boost::bind(&FunctionWithArg, argument);
-//    threadGroup.create_thread(boost::bind(&LoopForever<boost::function<void()> >, "nothing", f, milliseconds));
-template <typename Callable> void LoopForever(const char* name,  Callable func, int64_t msecs)
-{
-    std::string s = strprintf("Ember-%s", name);
-    RenameThread(s.c_str());
-    LogPrintf("%s thread start\n", name);
-    try
-    {
-        while (1)
-        {
-            MilliSleep(msecs);
-            func();
-        }
-    }
-    catch (boost::thread_interrupted)
-    {
-        LogPrintf("%s thread stop\n", name);
-        throw;
-    }
-    catch (std::exception& e) {
-        PrintException(&e, name);
-    }
-    catch (...) {
-        PrintException(NULL, name);
-    }
-}
-// .. and a wrapper that just calls func once
-template <typename Callable> void TraceThread(const char* name,  Callable func)
-{
-    std::string s = strprintf("Ember-%s", name);
-    RenameThread(s.c_str());
-    try
-    {
-        LogPrintf("%s thread start\n", name);
-        func();
-        LogPrintf("%s thread exit\n", name);
-    }
-    catch (boost::thread_interrupted)
-    {
-        LogPrintf("%s thread interrupt\n", name);
-        throw;
-    }
-    catch (std::exception& e) {
-        PrintException(&e, name);
-    }
-    catch (...) {
-        PrintException(NULL, name);
-    }
 }
 
 #endif

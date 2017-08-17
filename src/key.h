@@ -169,9 +169,7 @@ public:
 };
 
 
-// secure_allocator is defined in allocators.h
-// CPrivKey is a serialized private key, with all parameters included (279 bytes)
-typedef std::vector<unsigned char, secure_allocator<unsigned char> > CPrivKey;
+typedef std::vector<unsigned char> CPrivKey;
 
 /** An encapsulated private key. */
 class CKey {
@@ -189,22 +187,6 @@ private:
     // Check whether the 32-byte array pointed to be vch is valid keydata.
     bool static Check(const unsigned char *vch);
 public:
-
-    // Construct an invalid private key.
-    CKey() : fValid(false) {
-        LockObject(vch);
-    }
-
-    // Copy constructor. This is necessary because of memlocking.
-    CKey(const CKey &secret) : fValid(secret.fValid), fCompressed(secret.fCompressed) {
-        LockObject(vch);
-        memcpy(vch, secret.vch, sizeof(vch));
-    }
-
-    // Destructor (again necessary because of memlocking).
-    ~CKey() {
-        UnlockObject(vch);
-    }
 
     friend bool operator==(const CKey &a, const CKey &b) {
         return a.fCompressed == b.fCompressed && a.size() == b.size() &&

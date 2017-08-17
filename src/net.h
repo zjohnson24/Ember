@@ -21,6 +21,7 @@
 #include "protocol.h"
 #include "addrman.h"
 #include "hash.h"
+#include "coro.h"
 
 class CNode;
 class CBlockIndex;
@@ -44,7 +45,7 @@ CNode* ConnectNode(CAddress addrConnect, const char *strDest = NULL);
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
 bool BindListenPort(const CService &bindAddr, std::string& strError=REF(std::string()));
-void StartNode(boost::thread_group& threadGroup);
+void StartNode(std::vector<coro_context> &fiberGroup);
 bool StopNode();
 void SocketSendData(CNode *pnode);
 
@@ -96,14 +97,11 @@ extern uint64_t nLocalHostNonce;
 extern CAddrMan addrman;
 
 extern std::vector<CNode*> vNodes;
-extern CCriticalSection cs_vNodes;
 extern std::map<CInv, CDataStream> mapRelay;
 extern std::deque<std::pair<int64_t, CInv> > vRelayExpiration;
-extern CCriticalSection cs_mapRelay;
 extern std::map<CInv, int64_t> mapAlreadyAskedFor;
 
 extern std::vector<std::string> vAddedNodes;
-extern CCriticalSection cs_vAddedNodes;
 
 
 
@@ -186,11 +184,9 @@ public:
     size_t nSendOffset; // offset inside the first vSendMsg already sent
     uint64_t nSendBytes;
     std::deque<CSerializeData> vSendMsg;
-    CCriticalSection cs_vSend;
 
     std::deque<CInv> vRecvGetData;
     std::deque<CNetMessage> vRecvMsg;
-    CCriticalSection cs_vRecvMsg;
     uint64_t nRecvBytes;
     int nRecvVersion;
 
@@ -208,14 +204,12 @@ public:
     bool fNetworkNode;
     bool fSuccessfullyConnected;
     bool fDisconnect;
-    CSemaphoreGrant grantOutbound;
     int nRefCount;
 protected:
 
     // Denial-of-service detection/prevention
     // Key is IP address, value is banned-until-time
     static std::map<CNetAddr, int64_t> setBanned;
-    static CCriticalSection cs_setBanned;
     int nMisbehavior;
 
 public:
@@ -235,7 +229,6 @@ public:
     // inventory based relay
     mruset<CInv> setInventoryKnown;
     std::vector<CInv> vInventoryToSend;
-    CCriticalSection cs_inventory;
     std::multimap<int64_t, CInv> mapAskFor;
 
     // Ping time measurement:
@@ -301,8 +294,6 @@ public:
 
 private:
     // Network usage totals
-    static CCriticalSection cs_totalBytesRecv;
-    static CCriticalSection cs_totalBytesSent;
     static uint64_t nTotalBytesRecv;
     static uint64_t nTotalBytesSent;
 
@@ -363,19 +354,12 @@ public:
     }
 
 
-    void AddInventoryKnown(const CInv& inv)
-    {
-        {
-            LOCK(cs_inventory);
-            setInventoryKnown.insert(inv);
-        }
+    void AddInventoryKnown(const CInv& inv) {
+        setInventoryKnown.insert(inv);
     }
 
-    void PushInventory(const CInv& inv)
-    {
-        {
-            LOCK(cs_inventory);
-            if (!setInventoryKnown.count(inv))
+    void PushInventory(const CInv& inv) {
+		if (!setInventoryKnown.count(inv)) {
                 vInventoryToSend.push_back(inv);
         }
     }
@@ -402,29 +386,21 @@ public:
 
 
     // TODO: Document the postcondition of this function.  Is cs_vSend locked?
-    void BeginMessage(const char* pszCommand) EXCLUSIVE_LOCK_FUNCTION(cs_vSend)
-    {
-        ENTER_CRITICAL_SECTION(cs_vSend);
+    void BeginMessage(const char* pszCommand) {
         assert(ssSend.size() == 0);
         ssSend << CMessageHeader(pszCommand, 0);
         LogPrint("net", "sending: %s ", pszCommand);
     }
 
     // TODO: Document the precondition of this function.  Is cs_vSend locked?
-    void AbortMessage() UNLOCK_FUNCTION(cs_vSend)
-    {
+    void AbortMessage() {
         ssSend.clear();
-
-        LEAVE_CRITICAL_SECTION(cs_vSend);
-
         LogPrint("net", "(aborted)\n");
     }
 
     // TODO: Document the precondition of this function.  Is cs_vSend locked?
-    void EndMessage() UNLOCK_FUNCTION(cs_vSend)
-    {
-        if (mapArgs.count("-dropmessagestest") && GetRand(atoi(mapArgs["-dropmessagestest"])) == 0)
-        {
+    void EndMessage() {
+        if (mapArgs.count("-dropmessagestest") && GetRand(atoi(mapArgs["-dropmessagestest"])) == 0) {
             LogPrint("net", "dropmessages DROPPING SEND MESSAGE\n");
             AbortMessage();
             return;
@@ -454,21 +430,16 @@ public:
         if (it == vSendMsg.begin())
             SocketSendData(this);
 
-        LEAVE_CRITICAL_SECTION(cs_vSend);
     }
 
     void PushVersion();
 
 
-    void PushMessage(const char* pszCommand)
-    {
-        try
-        {
+    void PushMessage(const char* pszCommand) {
+        try {
             BeginMessage(pszCommand);
             EndMessage();
-        }
-        catch (...)
-        {
+        } catch (...) {
             AbortMessage();
             throw;
         }

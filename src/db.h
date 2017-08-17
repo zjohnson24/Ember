@@ -7,7 +7,6 @@
 #define BITCOIN_DB_H
 
 #include "serialize.h"
-#include "sync.h"
 #include "version.h"
 
 #include <map>
@@ -41,7 +40,6 @@ private:
     void EnvShutdown();
 
 public:
-    mutable CCriticalSection cs_db;
     DB_ENV *dbenv;
     std::map<std::string, int> mapFileUseCount;
     std::map<std::string, DB*> mapDb;
@@ -215,19 +213,7 @@ protected:
         return (ret == 0);
     }
 
-    int ReadAtCursor(DBC *pcursor, CDataStream& ssKey, CDataStream& ssValue, unsigned int fFlags=DB_NEXT) {
-		DBT datKey = {0};
-		DBT datValue = { 0 };
-
-        if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE) {
-			datKey.data = &ssKey[0];
-            datKey.size = ssKey.size();
-        }
-		
-        if (fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE) {
-            datValue.data = &ssValue[0];
-            datValue.size = ssValue.size();
-        }
+    int ReadAtCursor(DBC *pcursor, DBT &datKey, DBT &datValue, unsigned int fFlags=DB_NEXT) {
         datKey.flags |= DB_DBT_MALLOC;
         datValue.flags |= DB_DBT_MALLOC;
         int ret = pcursor->get(pcursor, &datKey, &datValue, fFlags);
@@ -236,15 +222,6 @@ protected:
 		} else if (datKey.data == NULL || datValue.data == NULL) {
 			return 99999;
 		}
-
-        // Convert to streams
-        ssKey.SetType(SER_DISK);
-        ssKey.clear();
-        ssKey.write((char*)datKey.data, datKey.size);
-        ssValue.SetType(SER_DISK);
-        ssValue.clear();
-        ssValue.write((char*)datValue.data, datValue.size);
-
         return 0;
     }
 
