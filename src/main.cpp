@@ -28,12 +28,7 @@ using namespace boost;
 //
 // Global state
 //
-
-CCriticalSection cs_setpwalletRegistered;
 set<CWallet*> setpwalletRegistered;
-
-CCriticalSection cs_main;
-
 CTxMemPool mempool;
 
 map<uint256, CBlockIndex*> mapBlockIndex;
@@ -2592,10 +2587,8 @@ struct CImportingNow
     }
 };
 
-void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
-{
-    RenameThread("Ember-loadblk");
-
+/*
+void ThreadImport(std::vector<boost::filesystem::path> &vImportFiles) {
     CImportingNow imp;
 
     // -loadblock=
@@ -2616,7 +2609,7 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
         }
     }
 }
-
+*/
 
 
 

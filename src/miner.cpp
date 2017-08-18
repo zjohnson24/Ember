@@ -499,78 +499,74 @@ bool CheckStake(CBlock* pblock, CWallet& wallet)
     LogPrintf("out %s\n", FormatMoney(pblock->vtx[1].GetValueOut()));
 
     // Found a solution
-    {
-        LOCK(cs_main);
-        if (pblock->hashPrevBlock != hashBestChain)
-            return error("CheckStake() : generated block is stale");
+	if (pblock->hashPrevBlock != hashBestChain) {
+		return error("CheckStake() : generated block is stale");
+	}
 
-        // Track how many getdata requests this block gets
-        {
-            LOCK(wallet.cs_wallet);
-            wallet.mapRequestCount[hashBlock] = 0;
-        }
+    // Track how many getdata requests this block gets
+    wallet.mapRequestCount[hashBlock] = 0;
 
-        // Process this block the same as if we had received it from another node
-        if (!ProcessBlock(NULL, pblock))
-            return error("CheckStake() : ProcessBlock, block not accepted");
-    }
+    // Process this block the same as if we had received it from another node
+	if (!ProcessBlock(NULL, pblock)) {
+		return error("CheckStake() : ProcessBlock, block not accepted");
+	}
 
     return true;
 }
 
-void ThreadStakeMiner(CWallet *pwallet)
-{
-    SetThreadPriority(THREAD_PRIORITY_LOWEST);
+int StakeMinerState = 0;
 
-    // Make this thread recognisable as the mining thread
-    RenameThread("Ember-miner");
+int StakeMiner(CWallet *pwallet) {
+	switch (StakeMinerState) {
+		case 0:
+			CReserveKey reservekey(pwallet);
+			bool fTryToSync = true;
+		while (true) {
+		case 1:
+			while (pwallet->IsLocked()) {
+				nLastCoinStakeSearchInterval = 0;
+				g = 2;
+				return 1000;
+		case 2:
+			}
 
-    CReserveKey reservekey(pwallet);
+			while (vNodes.empty() || IsInitialBlockDownload()) {
+				nLastCoinStakeSearchInterval = 0;
+				fTryToSync = true;
+				g = 3;
+				return 1000;
+		case 3:
+			}
 
-    bool fTryToSync = true;
+			if (fTryToSync) {
+				fTryToSync = false;
+				if (vNodes.size() < 3 || pindexBest->GetBlockTime() < GetTime() - 10 * 60) {
+					g = 4;
+					return 60000;
+		case 4:
+					g = 0;
+					continue;
+				}
+			}
 
-    while (true)
-    {
-        while (pwallet->IsLocked())
-        {
-            nLastCoinStakeSearchInterval = 0;
-            MilliSleep(1000);
-        }
+			// Create new block
+			int64_t nFees;
+			auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
+			if (!pblock.get()) {
+				return -1;
+			}
 
-        while (vNodes.empty() || IsInitialBlockDownload())
-        {
-            nLastCoinStakeSearchInterval = 0;
-            fTryToSync = true;
-            MilliSleep(1000);
-        }
-
-        if (fTryToSync)
-        {
-            fTryToSync = false;
-            if (vNodes.size() < 3 || pindexBest->GetBlockTime() < GetTime() - 10 * 60)
-            {
-                MilliSleep(60000);
-                continue;
-            }
-        }
-
-        //
-        // Create new block
-        //
-        int64_t nFees;
-        auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
-        if (!pblock.get())
-            return;
-
-        // Trying to sign a block
-        if (pblock->SignBlock(*pwallet, nFees))
-        {
-            SetThreadPriority(THREAD_PRIORITY_NORMAL);
-            CheckStake(pblock.get(), *pwallet);
-            SetThreadPriority(THREAD_PRIORITY_LOWEST);
-            MilliSleep(500);
-        }
-        else
-            MilliSleep(nMinerSleep);
-    }
+			// Trying to sign a block
+			if (pblock->SignBlock(*pwallet, nFees)) {
+				CheckStake(pblock.get(), *pwallet);
+				g = 5;
+				return 500;
+		case 5:
+			} else {
+				g = 6;
+				return nMinerSleep;
+		case 6:
+			}
+		}
+	}
 }

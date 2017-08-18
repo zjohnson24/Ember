@@ -8,7 +8,6 @@
 #include "base58.h"
 #include "protocol.h"
 #include "serialize.h"
-#include "sync.h"
 #include "wallet.h"
 
 #include <boost/filesystem.hpp>

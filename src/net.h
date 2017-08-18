@@ -133,17 +133,14 @@ public:
 class CNetMessage {
 public:
     bool in_data;                   // parsing header (false) or data (true)
-
-    CDataStream hdrbuf;             // partially received header
+    std::vector<char> hdrbuf;       // partially received header
     CMessageHeader hdr;             // complete header
     unsigned int nHdrPos;
-
-    CDataStream vRecv;              // received message data
+	std::vector<char> vRecv;        // received message data
     unsigned int nDataPos;
-
     int64_t nTime;                  // time (in microseconds) of message receipt.
 
-    CNetMessage(int nTypeIn, int nVersionIn) : hdrbuf(nTypeIn, nVersionIn), vRecv(nTypeIn, nVersionIn) {
+    CNetMessage(int nTypeIn) {
         hdrbuf.resize(24);
         in_data = false;
         nHdrPos = 0;
@@ -151,17 +148,10 @@ public:
         nTime = 0;
     }
 
-    bool complete() const
-    {
+    bool complete() const {
         if (!in_data)
             return false;
         return (hdr.nMessageSize == nDataPos);
-    }
-
-    void SetVersion(int nVersionIn)
-    {
-        hdrbuf.SetVersion(nVersionIn);
-        vRecv.SetVersion(nVersionIn);
     }
 
     int readHeader(const char *pch, unsigned int nBytes);
@@ -179,11 +169,11 @@ public:
     // socket
     uint64_t nServices;
     SOCKET hSocket;
-    CDataStream ssSend;
+    std::vector<char> ssSend;
     size_t nSendSize; // total size of all vSendMsg entries
     size_t nSendOffset; // offset inside the first vSendMsg already sent
     uint64_t nSendBytes;
-    std::deque<CSerializeData> vSendMsg;
+    std::deque<std::vector<char>> vSendMsg;
 
     std::deque<CInv> vRecvGetData;
     std::deque<CNetMessage> vRecvMsg;
@@ -309,18 +299,14 @@ public:
         return nRefCount;
     }
 
-    // requires LOCK(cs_vRecvMsg)
-    unsigned int GetTotalRecvSize()
-    {
+    unsigned int GetTotalRecvSize() {
         unsigned int total = 0;
         BOOST_FOREACH(const CNetMessage &msg, vRecvMsg)
             total += msg.vRecv.size() + 24;
         return total;
     }
 
-    // requires LOCK(cs_vRecvMsg)
-    void SetRecvVersion(int nVersionIn)
-    {
+    void SetRecvVersion(int nVersionIn) {
         nRecvVersion = nVersionIn;
         BOOST_FOREACH(CNetMessage &msg, vRecvMsg)
             msg.SetVersion(nVersionIn);

@@ -7,7 +7,6 @@
 
 #include "core.h"
 #include "bignum.h"
-#include "sync.h"
 #include "txmempool.h"
 #include "net.h"
 #include "hashblock.h"
@@ -122,7 +121,6 @@ void PrintBlockTree();
 CBlockIndex* FindBlockByHeight(int nHeight);
 bool ProcessMessages(CNode* pfrom);
 bool SendMessages(CNode* pto, bool fSendTrickle);
-void ThreadImport(std::vector<boost::filesystem::path> vImportFiles);
 
 bool CheckProofOfWork(uint256 hash, unsigned int nBits);
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake);
@@ -133,7 +131,7 @@ std::string GetWarnings(std::string strFor);
 bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
 uint256 WantedByOrphan(const COrphanBlock* pblockOrphan);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
-void ThreadStakeMiner(CWallet *pwallet);
+int StakeMiner(CWallet *pwallet);
 
 
 /** (try to) add transaction to memory pool **/

@@ -906,17 +906,7 @@ bool AppInit(int argc, char* argv[]) {
 #else // ENABLE_WALLET
 			LogPrintf("No wallet compiled in!\n");
 #endif // !ENABLE_WALLET
-			// ********************************************************* Step 9: import blocks
-
-			std::vector<boost::filesystem::path> vImportFiles;
-			if (mapArgs.count("-loadblock")) {
-				BOOST_FOREACH(string strFile, mapMultiArgs["-loadblock"])
-					vImportFiles.push_back(strFile);
-			}
-			fiberGroup.push_back(new coro_context());
-			coro_create(fiberGroup.back(), (coro_func)&ThreadImport, &vImportFiles, NULL, 0);
-
-			// ********************************************************* Step 10: load peers
+			// ********************************************************* Step 9: load peers
 
 			uiInterface.InitMessage(_("Loading addresses..."));
 
@@ -932,7 +922,7 @@ bool AppInit(int argc, char* argv[]) {
 					addrman.size(), GetTimeMillis() - nStart);
 			}
 
-			// ********************************************************* Step 11: start node
+			// ********************************************************* Step 10: start node
 
 			if (!CheckDiskSpace()) {
 				goto error;
@@ -969,12 +959,12 @@ bool AppInit(int argc, char* argv[]) {
 				LogPrintf("Staking disabled\n");
 			}
 			else if (pwalletMain) {
-				fiberGroup.push_back(new coro_context());
-				coro_create(fiberGroup.back(), (coro_func)&ThreadStakeMiner, pwalletMain, NULL, 0); // staking fiber
+				fiberGroup.push_back(coro_context());
+				coro_create(fiberGroup.back(), (coro_func)&StakeMiner, pwalletMain, NULL, 0); // staking fiber
 			}
 #endif
 
-			// ********************************************************* Step 12: finished
+			// ********************************************************* Step 11: finished
 
 			uiInterface.InitMessage(_("Done loading"));
 
