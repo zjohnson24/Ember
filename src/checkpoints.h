@@ -46,7 +46,6 @@ namespace Checkpoints
     extern uint256 hashSyncCheckpoint;
     extern CSyncCheckpoint checkpointMessage;
     extern uint256 hashInvalidCheckpoint;
-    extern CCriticalSection cs_hashSyncCheckpoint;
 
     CBlockIndex* GetLastSyncCheckpoint();
     bool WriteSyncCheckpoint(const uint256& hashCheckpoint);

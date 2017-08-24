@@ -192,18 +192,27 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
     unsigned int fFlags = DB_SET_RANGE;
     while (true) {
         // Read next record
-		DBT datKey = { 0 };
-		DBT datValue = { 0 };
+		CDataStream ssKey(SER_DISK, CLIENT_VERSION);
 		if (fFlags == DB_SET_RANGE) {
-			if (fAllAccounts) {
-				sprintf(&tmp[0], "(acentry %d)", (uint64_t)0);
-			} else {
-				sprintf(&tmp[0], "(acentry %s %d)", strAccount, (uint64_t)0);
-			}
-			datKey.data = &tmp[0];
-			datKey.size = strlen(&tmp[0]);
+			ssKey << boost::make_tuple(string("acentry"), (fAllAccounts ? string("") : strAccount), uint64_t(0));
 		}
+		CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+		DBT datKey = { 0 };
+		datKey.data = &ssKey[0];
+		datKey.size = ssKey.size();
+		DBT datValue = { 0 };
+		datValue.data = &ssValue[0];
+		datValue.size = ssValue.size();
+
         ret = ReadAtCursor(pcursor, datKey, datValue, fFlags);
+
+		ssKey.SetType(SER_DISK);
+		ssKey.clear();
+		ssKey.write((char*)datKey.data, datKey.size);
+		ssValue.SetType(SER_DISK);
+		ssValue.clear();
+		ssValue.write((char*)datValue.data, datValue.size);
+
         fFlags = DB_NEXT;
 		if (ret == DB_NOTFOUND) {
 			break;
@@ -231,9 +240,7 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
 
 
 DBErrors
-CWalletDB::ReorderTransactions(CWallet* pwallet)
-{
-    LOCK(pwallet->cs_wallet);
+CWalletDB::ReorderTransactions(CWallet* pwallet) {
     // Old wallets didn't have any defined order for transactions
     // Probably a bad idea to change the output of this
 
@@ -573,7 +580,6 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet) {
 	int ret;
 
     try {
-        LOCK(pwallet->cs_wallet);
         int nMinVersion = 0;
         if (Read((string)"minversion", nMinVersion))
         {
@@ -595,7 +601,16 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet) {
             // Read next record
             CDataStream ssKey(SER_DISK, CLIENT_VERSION);
             CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-            ret = ReadAtCursor(pcursor, ssKey, ssValue);
+			DBT k = { 0 };
+			DBT v = { 0 };
+            ret = ReadAtCursor(pcursor, k, v);
+			ssKey.SetType(SER_DISK);
+			ssKey.clear();
+			ssKey.write((char*)k.data, k.size);
+			ssValue.SetType(SER_DISK);
+			ssValue.clear();
+			ssValue.write((char*)v.data, v.size);
+
             if (ret == DB_NOTFOUND)
                 break;
             else if (ret != 0)
@@ -625,11 +640,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet) {
                 LogPrintf("%s\n", strErr);
         }
         pcursor->close(pcursor);
-    }
-    catch (boost::thread_interrupted) {
-        throw;
-    }
-    catch (...) {
+    } catch (...) {
         result = DB_CORRUPT;
     }
 
@@ -667,11 +678,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet) {
     return result;
 }
 
-void ThreadFlushWalletDB(const string& strFile)
-{
-    // Make this thread recognisable as the wallet flushing thread
-    RenameThread("Ember-wallet");
-
+void FlushWalletDB(const string& strFile) {
     static bool fOneThread;
     if (fOneThread)
         return;
@@ -692,89 +699,73 @@ void ThreadFlushWalletDB(const string& strFile)
             nLastWalletUpdate = GetTime();
         }
 
-        if (nLastFlushed != nWalletDBUpdated && GetTime() - nLastWalletUpdate >= 2)
-        {
-            TRY_LOCK(bitdb.cs_db,lockDb);
-            if (lockDb)
-            {
-                // Don't do this if any databases are in use
-                int nRefCount = 0;
-                map<string, int>::iterator mi = bitdb.mapFileUseCount.begin();
-                while (mi != bitdb.mapFileUseCount.end())
-                {
-                    nRefCount += (*mi).second;
-                    mi++;
-                }
+        if (nLastFlushed != nWalletDBUpdated && GetTime() - nLastWalletUpdate >= 2) {
+            // Don't do this if any databases are in use
+            int nRefCount = 0;
+            map<string, int>::iterator mi = bitdb.mapFileUseCount.begin();
+            while (mi != bitdb.mapFileUseCount.end()) {
+                nRefCount += (*mi).second;
+                mi++;
+            }
 
-                if (nRefCount == 0)
-                {
-                    boost::this_thread::interruption_point();
-                    map<string, int>::iterator mi = bitdb.mapFileUseCount.find(strFile);
-                    if (mi != bitdb.mapFileUseCount.end())
-                    {
-                        LogPrint("db", "Flushing wallet.dat\n");
-                        nLastFlushed = nWalletDBUpdated;
-                        int64_t nStart = GetTimeMillis();
+            if (nRefCount == 0) {
+                map<string, int>::iterator mi = bitdb.mapFileUseCount.find(strFile);
+                if (mi != bitdb.mapFileUseCount.end()) {
+                    LogPrint("db", "Flushing wallet.dat\n");
+                    nLastFlushed = nWalletDBUpdated;
+                    int64_t nStart = GetTimeMillis();
 
-                        // Flush wallet.dat so it's self contained
-                        bitdb.CloseDb(strFile);
-                        bitdb.CheckpointLSN(strFile);
+                    // Flush wallet.dat so it's self contained
+                    bitdb.CloseDb(strFile);
+                    bitdb.CheckpointLSN(strFile);
 
-                        bitdb.mapFileUseCount.erase(mi++);
-                        LogPrint("db", "Flushed wallet.dat %dms\n", GetTimeMillis() - nStart);
-                    }
+                    bitdb.mapFileUseCount.erase(mi++);
+                    LogPrint("db", "Flushed wallet.dat %dms\n", GetTimeMillis() - nStart);
                 }
             }
         }
     }
 }
 
-bool BackupWallet(const CWallet& wallet, const string& strDest)
-{
-    if (!wallet.fFileBacked)
-        return false;
-    while (true)
-    {
-        {
-            LOCK(bitdb.cs_db);
-            if (!bitdb.mapFileUseCount.count(wallet.strWalletFile) || bitdb.mapFileUseCount[wallet.strWalletFile] == 0)
-            {
-                // Flush log data to the dat file
-                bitdb.CloseDb(wallet.strWalletFile);
-                bitdb.CheckpointLSN(wallet.strWalletFile);
-                bitdb.mapFileUseCount.erase(wallet.strWalletFile);
+bool BackupWallet(const CWallet& wallet, const string& strDest) {
+	if (!wallet.fFileBacked) {
+		return false;
+	}
+    
+    if (!bitdb.mapFileUseCount.count(wallet.strWalletFile) || bitdb.mapFileUseCount[wallet.strWalletFile] == 0) {
+        // Flush log data to the dat file
+        bitdb.CloseDb(wallet.strWalletFile);
+        bitdb.CheckpointLSN(wallet.strWalletFile);
+        bitdb.mapFileUseCount.erase(wallet.strWalletFile);
 
-                // Copy wallet.dat
-                filesystem::path pathSrc = GetDataDir() / wallet.strWalletFile;
-                filesystem::path pathDest(strDest);
-                if (filesystem::is_directory(pathDest))
-                    pathDest /= wallet.strWalletFile;
+        // Copy wallet.dat
+        filesystem::path pathSrc = GetDataDir() / wallet.strWalletFile;
+        filesystem::path pathDest(strDest);
+        if (filesystem::is_directory(pathDest))
+            pathDest /= wallet.strWalletFile;
 
-                try {
+        try {
 #if BOOST_VERSION >= 104000
-                    filesystem::copy_file(pathSrc, pathDest, filesystem::copy_option::overwrite_if_exists);
+            filesystem::copy_file(pathSrc, pathDest, filesystem::copy_option::overwrite_if_exists);
 #else
-                    filesystem::copy_file(pathSrc, pathDest);
+            filesystem::copy_file(pathSrc, pathDest);
 #endif
-                    LogPrintf("copied wallet.dat to %s\n", pathDest.string());
-                    return true;
-                } catch(const filesystem::filesystem_error &e) {
-                    LogPrintf("error copying wallet.dat to %s - %s\n", pathDest.string(), e.what());
-                    return false;
-                }
-            }
+            LogPrintf("copied wallet.dat to %s\n", pathDest.string());
+            return true;
+        } catch(const filesystem::filesystem_error &e) {
+            LogPrintf("error copying wallet.dat to %s - %s\n", pathDest.string(), e.what());
+            return false;
         }
-        MilliSleep(100);
     }
-    return false;
+	
+    return 100;
 }
 
 //
 // Try to (very carefully!) recover wallet.dat if there is a problem.
 //
 
-bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
-{
+bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys) {
     // Recovery procedure:
     // move wallet.dat to wallet.timestamp.bak
     // Call Salvage with fAggressive=true to

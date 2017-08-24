@@ -4,6 +4,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "coro.h"
 #include "txdb.h"
 #include "miner.h"
 #include "kernel.h"
@@ -162,187 +163,184 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 
     // Collect memory pool transactions into the block
     int64_t nFees = 0;
+    CTxDB txdb("r");
+
+    // Priority order to process transactions
+    list<COrphan> vOrphan; // list memory doesn't move
+    map<uint256, vector<COrphan*> > mapDependers;
+
+    // This vector will be sorted into a priority queue:
+    vector<TxPriority> vecPriority;
+    vecPriority.reserve(mempool.mapTx.size());
+    for (map<uint256, CTransaction>::iterator mi = mempool.mapTx.begin(); mi != mempool.mapTx.end(); ++mi)
     {
-        LOCK2(cs_main, mempool.cs);
-        CTxDB txdb("r");
+        CTransaction& tx = (*mi).second;
+        if (tx.IsCoinBase() || tx.IsCoinStake() || !IsFinalTx(tx, nHeight))
+            continue;
 
-        // Priority order to process transactions
-        list<COrphan> vOrphan; // list memory doesn't move
-        map<uint256, vector<COrphan*> > mapDependers;
-
-        // This vector will be sorted into a priority queue:
-        vector<TxPriority> vecPriority;
-        vecPriority.reserve(mempool.mapTx.size());
-        for (map<uint256, CTransaction>::iterator mi = mempool.mapTx.begin(); mi != mempool.mapTx.end(); ++mi)
+        COrphan* porphan = NULL;
+        double dPriority = 0;
+        int64_t nTotalIn = 0;
+        bool fMissingInputs = false;
+        BOOST_FOREACH(const CTxIn& txin, tx.vin)
         {
-            CTransaction& tx = (*mi).second;
-            if (tx.IsCoinBase() || tx.IsCoinStake() || !IsFinalTx(tx, nHeight))
-                continue;
-
-            COrphan* porphan = NULL;
-            double dPriority = 0;
-            int64_t nTotalIn = 0;
-            bool fMissingInputs = false;
-            BOOST_FOREACH(const CTxIn& txin, tx.vin)
+            // Read prev transaction
+            CTransaction txPrev;
+            CTxIndex txindex;
+            if (!txPrev.ReadFromDisk(txdb, txin.prevout, txindex))
             {
-                // Read prev transaction
-                CTransaction txPrev;
-                CTxIndex txindex;
-                if (!txPrev.ReadFromDisk(txdb, txin.prevout, txindex))
+                // This should never happen; all transactions in the memory
+                // pool should connect to either transactions in the chain
+                // or other transactions in the memory pool.
+                if (!mempool.mapTx.count(txin.prevout.hash))
                 {
-                    // This should never happen; all transactions in the memory
-                    // pool should connect to either transactions in the chain
-                    // or other transactions in the memory pool.
-                    if (!mempool.mapTx.count(txin.prevout.hash))
-                    {
-                        LogPrintf("ERROR: mempool transaction missing input\n");
-                        if (fDebug) assert("mempool transaction missing input" == 0);
-                        fMissingInputs = true;
-                        if (porphan)
-                            vOrphan.pop_back();
-                        break;
-                    }
-
-                    // Has to wait for dependencies
-                    if (!porphan)
-                    {
-                        // Use list for automatic deletion
-                        vOrphan.push_back(COrphan(&tx));
-                        porphan = &vOrphan.back();
-                    }
-                    mapDependers[txin.prevout.hash].push_back(porphan);
-                    porphan->setDependsOn.insert(txin.prevout.hash);
-                    nTotalIn += mempool.mapTx[txin.prevout.hash].vout[txin.prevout.n].nValue;
-                    continue;
+                    LogPrintf("ERROR: mempool transaction missing input\n");
+                    if (fDebug) assert("mempool transaction missing input" == 0);
+                    fMissingInputs = true;
+                    if (porphan)
+                        vOrphan.pop_back();
+                    break;
                 }
-                int64_t nValueIn = txPrev.vout[txin.prevout.n].nValue;
-                nTotalIn += nValueIn;
 
-                int nConf = txindex.GetDepthInMainChain();
-                dPriority += (double)nValueIn * nConf;
+                // Has to wait for dependencies
+                if (!porphan)
+                {
+                    // Use list for automatic deletion
+                    vOrphan.push_back(COrphan(&tx));
+                    porphan = &vOrphan.back();
+                }
+                mapDependers[txin.prevout.hash].push_back(porphan);
+                porphan->setDependsOn.insert(txin.prevout.hash);
+                nTotalIn += mempool.mapTx[txin.prevout.hash].vout[txin.prevout.n].nValue;
+                continue;
             }
-            if (fMissingInputs) continue;
+            int64_t nValueIn = txPrev.vout[txin.prevout.n].nValue;
+            nTotalIn += nValueIn;
 
-            // Priority is sum(valuein * age) / txsize
-            unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
-            dPriority /= nTxSize;
+            int nConf = txindex.GetDepthInMainChain();
+            dPriority += (double)nValueIn * nConf;
+        }
+        if (fMissingInputs) continue;
 
-            // This is a more accurate fee-per-kilobyte than is used by the client code, because the
-            // client code rounds up the size to the nearest 1K. That's good, because it gives an
-            // incentive to create smaller transactions.
-            double dFeePerKb =  double(nTotalIn-tx.GetValueOut()) / (double(nTxSize)/1000.0);
+        // Priority is sum(valuein * age) / txsize
+        unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+        dPriority /= nTxSize;
 
-            if (porphan)
-            {
-                porphan->dPriority = dPriority;
-                porphan->dFeePerKb = dFeePerKb;
-            }
-            else
-                vecPriority.push_back(TxPriority(dPriority, dFeePerKb, &(*mi).second));
+        // This is a more accurate fee-per-kilobyte than is used by the client code, because the
+        // client code rounds up the size to the nearest 1K. That's good, because it gives an
+        // incentive to create smaller transactions.
+        double dFeePerKb =  double(nTotalIn-tx.GetValueOut()) / (double(nTxSize)/1000.0);
+
+        if (porphan)
+        {
+            porphan->dPriority = dPriority;
+            porphan->dFeePerKb = dFeePerKb;
+        }
+        else
+            vecPriority.push_back(TxPriority(dPriority, dFeePerKb, &(*mi).second));
+    }
+
+    // Collect transactions into block
+    map<uint256, CTxIndex> mapTestPool;
+    uint64_t nBlockSize = 1000;
+    uint64_t nBlockTx = 0;
+    int nBlockSigOps = 100;
+    bool fSortedByFee = (nBlockPrioritySize <= 0);
+
+    TxPriorityCompare comparer(fSortedByFee);
+    std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
+
+    while (!vecPriority.empty())
+    {
+        // Take highest priority transaction off the priority queue:
+        double dPriority = vecPriority.front().get<0>();
+        double dFeePerKb = vecPriority.front().get<1>();
+        CTransaction& tx = *(vecPriority.front().get<2>());
+
+        std::pop_heap(vecPriority.begin(), vecPriority.end(), comparer);
+        vecPriority.pop_back();
+
+        // Size limits
+        unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+        if (nBlockSize + nTxSize >= nBlockMaxSize)
+            continue;
+
+        // Legacy limits on sigOps:
+        unsigned int nTxSigOps = GetLegacySigOpCount(tx);
+        if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS)
+            continue;
+
+        // Timestamp limit
+        if (tx.nTime > GetAdjustedTime() || (fProofOfStake && tx.nTime > pblock->vtx[0].nTime))
+            continue;
+
+        // Transaction fee
+        int64_t nMinFee = GetMinFee(tx, nBlockSize, GMF_BLOCK);
+
+        // Skip free transactions if we're past the minimum block size:
+        if (fSortedByFee && (dFeePerKb < nMinTxFee) && (nBlockSize + nTxSize >= nBlockMinSize))
+            continue;
+
+        // Prioritize by fee once past the priority size or we run out of high-priority
+        // transactions:
+        if (!fSortedByFee &&
+            ((nBlockSize + nTxSize >= nBlockPrioritySize) || (dPriority < COIN * 144 / 250)))
+        {
+            fSortedByFee = true;
+            comparer = TxPriorityCompare(fSortedByFee);
+            std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
         }
 
-        // Collect transactions into block
-        map<uint256, CTxIndex> mapTestPool;
-        uint64_t nBlockSize = 1000;
-        uint64_t nBlockTx = 0;
-        int nBlockSigOps = 100;
-        bool fSortedByFee = (nBlockPrioritySize <= 0);
+        // Connecting shouldn't fail due to dependency on other memory pool transactions
+        // because we're already processing them in order of dependency
+        map<uint256, CTxIndex> mapTestPoolTmp(mapTestPool);
+        MapPrevTx mapInputs;
+        bool fInvalid;
+        if (!tx.FetchInputs(txdb, mapTestPoolTmp, false, true, mapInputs, fInvalid))
+            continue;
 
-        TxPriorityCompare comparer(fSortedByFee);
-        std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
+        int64_t nTxFees = tx.GetValueIn(mapInputs)-tx.GetValueOut();
+        if (nTxFees < nMinFee)
+            continue;
 
-        while (!vecPriority.empty())
+        nTxSigOps += GetP2SHSigOpCount(tx, mapInputs);
+        if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS)
+            continue;
+
+        // Note that flags: we don't want to set mempool/IsStandard()
+        // policy here, but we still have to ensure that the block we
+        // create only contains transactions that are valid in new blocks.
+        if (!tx.ConnectInputs(txdb, mapInputs, mapTestPoolTmp, CDiskTxPos(1,1,1), pindexPrev, false, true, MANDATORY_SCRIPT_VERIFY_FLAGS))
+            continue;
+        mapTestPoolTmp[tx.GetHash()] = CTxIndex(CDiskTxPos(1,1,1), tx.vout.size());
+        swap(mapTestPool, mapTestPoolTmp);
+
+        // Added
+        pblock->vtx.push_back(tx);
+        nBlockSize += nTxSize;
+        ++nBlockTx;
+        nBlockSigOps += nTxSigOps;
+        nFees += nTxFees;
+
+        if (fDebug && GetBoolArg("-printpriority", false))
         {
-            // Take highest priority transaction off the priority queue:
-            double dPriority = vecPriority.front().get<0>();
-            double dFeePerKb = vecPriority.front().get<1>();
-            CTransaction& tx = *(vecPriority.front().get<2>());
+            LogPrintf("priority %.1f feeperkb %.1f txid %s\n",
+                    dPriority, dFeePerKb, tx.GetHash().ToString());
+        }
 
-            std::pop_heap(vecPriority.begin(), vecPriority.end(), comparer);
-            vecPriority.pop_back();
-
-            // Size limits
-            unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
-            if (nBlockSize + nTxSize >= nBlockMaxSize)
-                continue;
-
-            // Legacy limits on sigOps:
-            unsigned int nTxSigOps = GetLegacySigOpCount(tx);
-            if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS)
-                continue;
-
-            // Timestamp limit
-            if (tx.nTime > GetAdjustedTime() || (fProofOfStake && tx.nTime > pblock->vtx[0].nTime))
-                continue;
-
-            // Transaction fee
-            int64_t nMinFee = GetMinFee(tx, nBlockSize, GMF_BLOCK);
-
-            // Skip free transactions if we're past the minimum block size:
-            if (fSortedByFee && (dFeePerKb < nMinTxFee) && (nBlockSize + nTxSize >= nBlockMinSize))
-                continue;
-
-            // Prioritize by fee once past the priority size or we run out of high-priority
-            // transactions:
-            if (!fSortedByFee &&
-                ((nBlockSize + nTxSize >= nBlockPrioritySize) || (dPriority < COIN * 144 / 250)))
+        // Add transactions that depend on this one to the priority queue
+        uint256 hash = tx.GetHash();
+        if (mapDependers.count(hash))
+        {
+            BOOST_FOREACH(COrphan* porphan, mapDependers[hash])
             {
-                fSortedByFee = true;
-                comparer = TxPriorityCompare(fSortedByFee);
-                std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
-            }
-
-            // Connecting shouldn't fail due to dependency on other memory pool transactions
-            // because we're already processing them in order of dependency
-            map<uint256, CTxIndex> mapTestPoolTmp(mapTestPool);
-            MapPrevTx mapInputs;
-            bool fInvalid;
-            if (!tx.FetchInputs(txdb, mapTestPoolTmp, false, true, mapInputs, fInvalid))
-                continue;
-
-            int64_t nTxFees = tx.GetValueIn(mapInputs)-tx.GetValueOut();
-            if (nTxFees < nMinFee)
-                continue;
-
-            nTxSigOps += GetP2SHSigOpCount(tx, mapInputs);
-            if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS)
-                continue;
-
-            // Note that flags: we don't want to set mempool/IsStandard()
-            // policy here, but we still have to ensure that the block we
-            // create only contains transactions that are valid in new blocks.
-            if (!tx.ConnectInputs(txdb, mapInputs, mapTestPoolTmp, CDiskTxPos(1,1,1), pindexPrev, false, true, MANDATORY_SCRIPT_VERIFY_FLAGS))
-                continue;
-            mapTestPoolTmp[tx.GetHash()] = CTxIndex(CDiskTxPos(1,1,1), tx.vout.size());
-            swap(mapTestPool, mapTestPoolTmp);
-
-            // Added
-            pblock->vtx.push_back(tx);
-            nBlockSize += nTxSize;
-            ++nBlockTx;
-            nBlockSigOps += nTxSigOps;
-            nFees += nTxFees;
-
-            if (fDebug && GetBoolArg("-printpriority", false))
-            {
-                LogPrintf("priority %.1f feeperkb %.1f txid %s\n",
-                       dPriority, dFeePerKb, tx.GetHash().ToString());
-            }
-
-            // Add transactions that depend on this one to the priority queue
-            uint256 hash = tx.GetHash();
-            if (mapDependers.count(hash))
-            {
-                BOOST_FOREACH(COrphan* porphan, mapDependers[hash])
+                if (!porphan->setDependsOn.empty())
                 {
-                    if (!porphan->setDependsOn.empty())
+                    porphan->setDependsOn.erase(hash);
+                    if (porphan->setDependsOn.empty())
                     {
-                        porphan->setDependsOn.erase(hash);
-                        if (porphan->setDependsOn.empty())
-                        {
-                            vecPriority.push_back(TxPriority(porphan->dPriority, porphan->dFeePerKb, porphan->ptx));
-                            std::push_heap(vecPriority.begin(), vecPriority.end(), comparer);
-                        }
+                        vecPriority.push_back(TxPriority(porphan->dPriority, porphan->dFeePerKb, porphan->ptx));
+                        std::push_heap(vecPriority.begin(), vecPriority.end(), comparer);
                     }
                 }
             }
@@ -455,24 +453,18 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     LogPrintf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue));
 
     // Found a solution
-    {
-        LOCK(cs_main);
-        if (pblock->hashPrevBlock != hashBestChain)
-            return error("CheckWork() : generated block is stale");
+    if (pblock->hashPrevBlock != hashBestChain)
+        return error("CheckWork() : generated block is stale");
 
-        // Remove key from key pool
-        reservekey.KeepKey();
+    // Remove key from key pool
+    reservekey.KeepKey();
 
-        // Track how many getdata requests this block gets
-        {
-            LOCK(wallet.cs_wallet);
-            wallet.mapRequestCount[hashBlock] = 0;
-        }
+    // Track how many getdata requests this block gets
+    wallet.mapRequestCount[hashBlock] = 0;
 
-        // Process this block the same as if we had received it from another node
-        if (!ProcessBlock(NULL, pblock))
-            return error("CheckWork() : ProcessBlock, block not accepted");
-    }
+    // Process this block the same as if we had received it from another node
+    if (!ProcessBlock(NULL, pblock))
+        return error("CheckWork() : ProcessBlock, block not accepted");
 
     return true;
 }
@@ -514,59 +506,66 @@ bool CheckStake(CBlock* pblock, CWallet& wallet)
     return true;
 }
 
-int StakeMinerState = 0;
+/* int ascending (coro_args) {
+*    coro_ctx_start;
+*    int i;
+*    coro_ctx_stop(foo);
+*
+*  }
+*/
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-int StakeMiner(CWallet *pwallet) {
-	switch (StakeMinerState) {
-		case 0:
-			CReserveKey reservekey(pwallet);
-			bool fTryToSync = true;
-		while (true) {
-		case 1:
-			while (pwallet->IsLocked()) {
-				nLastCoinStakeSearchInterval = 0;
-				g = 2;
-				return 1000;
-		case 2:
-			}
+int StakeMiner(coro_args) {
+	coro_ctx_start;
+	CWallet *pwallet;
+	CReserveKey reservekey;
+	int64_t nFees;
+	bool do_sync = true;
+	coro_ctx_stop(StakeMiner);
 
-			while (vNodes.empty() || IsInitialBlockDownload()) {
-				nLastCoinStakeSearchInterval = 0;
-				fTryToSync = true;
-				g = 3;
-				return 1000;
-		case 3:
-			}
+	coro_begin(StakeMiner);
+	StakeMiner->reservekey = CReserveKey(StakeMiner->pwallet);
 
-			if (fTryToSync) {
-				fTryToSync = false;
-				if (vNodes.size() < 3 || pindexBest->GetBlockTime() < GetTime() - 10 * 60) {
-					g = 4;
-					return 60000;
-		case 4:
-					g = 0;
-					continue;
-				}
-			}
+beginning:
+	while (StakeMiner->pwallet->IsLocked()) {
+		nLastCoinStakeSearchInterval = 0;
+		coro_return(1000); // 1 sec.
+	}
 
-			// Create new block
-			int64_t nFees;
-			auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
-			if (!pblock.get()) {
-				return -1;
-			}
+	while (vNodes.empty() || IsInitialBlockDownload()) {
+		nLastCoinStakeSearchInterval = 0;
+		StakeMiner->do_sync = true;
+		coro_return(1000); // 1 sec.
+	}
 
-			// Trying to sign a block
-			if (pblock->SignBlock(*pwallet, nFees)) {
-				CheckStake(pblock.get(), *pwallet);
-				g = 5;
-				return 500;
-		case 5:
-			} else {
-				g = 6;
-				return nMinerSleep;
-		case 6:
-			}
+	if (StakeMiner->do_sync) {
+		StakeMiner->do_sync = false;
+		if (vNodes.size() < 3 || pindexBest->GetBlockTime() < GetTime() - 10 * 60) {
+			coro_return(60000); // 1 min.
+			goto beginning;
 		}
 	}
+
+	// Create new block
+	auto_ptr<CBlock> pblock(CreateNewBlock(StakeMiner->reservekey, true, &(StakeMiner->nFees)));
+	if (!pblock.get()) {
+		coro_stop(-1);
+	}
+
+	// Trying to sign a block
+	if (pblock->SignBlock(*(StakeMiner->pwallet), StakeMiner->nFees)) {
+		CheckStake(pblock.get(), *(StakeMiner->pwallet));
+		coro_return(500); // half a second
+	}
+	else {
+		coro_return(nMinerSleep);
+	}
+
+	coro_finish(-1);
 }
+
+#ifdef __cplusplus
+}
+#endif

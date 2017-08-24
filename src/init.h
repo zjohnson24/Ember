@@ -14,5 +14,5 @@ void Shutdown();
 bool AppInit();
 std::string HelpMessage();
 
-extern std::vector<*coro_context> fiberGroup;
+extern std::vector<coro> fiberGroup;
 #endif

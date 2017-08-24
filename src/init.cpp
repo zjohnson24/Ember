@@ -11,6 +11,7 @@
 #include "rpcclient.h"
 #include "net.h"
 #include "util.h"
+#include "coro.h"
 
 #include "ui_interface.h"
 #include "checkpoints.h"
@@ -25,6 +26,7 @@
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <openssl/crypto.h>
+#include <chrono>
 
 #ifndef _WIN32
 #include <signal.h>
@@ -49,6 +51,7 @@ enum Checkpoints::CPMode CheckpointsMode;
 bool fRegTest;
 bool fTestNet;
 
+std::vector<coro> fiberGroup;
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -81,7 +84,6 @@ bool fTestNet;
 //
 
 volatile bool fRequestShutdown = false;
-std::vector<*coro_context> fiberGroup;
 
 void StartShutdown()
 {
@@ -92,14 +94,8 @@ bool ShutdownRequested()
     return fRequestShutdown;
 }
 
-void Shutdown()
-{
+void Shutdown() {
     LogPrintf("Shutdown : In progress...\n");
-    static CCriticalSection cs_Shutdown;
-    TRY_LOCK(cs_Shutdown, lockShutdown);
-    if (!lockShutdown) return;
-
-    RenameThread("Ember-shutoff");
     mempool.AddTransactionsUpdated(1);
     StopRPCThreads();
 #ifdef ENABLE_WALLET
@@ -108,13 +104,11 @@ void Shutdown()
         bitdb.Flush(false);
 #endif
     StopNode();
-    {
-        LOCK(cs_main);
+
 #ifdef ENABLE_WALLET
-        if (pwalletMain)
-            pwalletMain->SetBestChain(CBlockLocator(pindexBest));
+    if (pwalletMain)
+        pwalletMain->SetBestChain(CBlockLocator(pindexBest));
 #endif
-    }
 #ifdef ENABLE_WALLET
     if (pwalletMain)
         bitdb.Flush(true);
@@ -959,8 +953,11 @@ bool AppInit(int argc, char* argv[]) {
 				LogPrintf("Staking disabled\n");
 			}
 			else if (pwalletMain) {
-				fiberGroup.push_back(coro_context());
-				coro_create(fiberGroup.back(), (coro_func)&StakeMiner, pwalletMain, NULL, 0); // staking fiber
+				coro c = coro();
+				c.coro = &StakeMiner;
+				c.args_len = 2;
+				fiberGroup.push_back();
+				coro_create(, pwalletMain, NULL, 0); // staking fiber
 			}
 #endif
 
@@ -972,7 +969,7 @@ bool AppInit(int argc, char* argv[]) {
 			if (pwalletMain) {
 				pwalletMain->ReacceptWalletTransactions(); // Add wallet transactions that aren't already in a block to mapTransactions
 				fiberGroup.push_back(new coro_context());
-				coro_create(fiberGroup.back(), (coro_func)&ThreadFlushWalletDB, &(pwalletMain->strWalletFile), NULL, 0); // Run a fiber to flush wallet periodically
+				coro_create(fiberGroup.back(), (coro_func)&FlushWalletDB, &(pwalletMain->strWalletFile), NULL, 0); // Run a fiber to flush wallet periodically
 			}
 #endif
 	} catch (std::exception& e) {
@@ -982,9 +979,16 @@ bool AppInit(int argc, char* argv[]) {
 	}
 	coro_context root = coro_context();
 	coro_create(&root, 0, 0, 0, 0);
+
+	using std::chrono::steady_clock;
+	auto start = steady_clock::now();
+	/* Do stuff */
+	auto end = steady_clock::now();
+	double elapsedSeconds = ((end - start).count()) * steady_clock::period::num / static_cast<double>(steady_clock::period::den);
+
 	while (!fiberGroup.empty()) {
 		for (int i = 0; i < fiberGroup.size(); i++) {
-			coro_transfer(&root, fiberGroup[i]);
+			t = coro_transfer(&root, fiberGroup[i]);
 		}
 	}
 	Shutdown();

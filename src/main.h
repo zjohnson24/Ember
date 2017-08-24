@@ -56,7 +56,6 @@ static const int64_t COIN_YEAR_REWARD = 7200 * CENT; // ~720% per year
 inline int64_t FutureDrift(int64_t nTime) { return nTime + 10 * 60; }
 
 extern CScript COINBASE_FLAGS;
-extern CCriticalSection cs_main;
 extern CTxMemPool mempool;
 extern std::map<uint256, CBlockIndex*> mapBlockIndex;
 extern std::set<std::pair<COutPoint, unsigned int> > setStakeSeen;

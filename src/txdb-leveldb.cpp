@@ -340,7 +340,6 @@ bool CTxDB::LoadBlockIndex()
     // Now read each entry.
     while (iterator->Valid())
     {
-        boost::this_thread::interruption_point();
         // Unpack keys and values.
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.write(iterator->key().data(), iterator->key().size());
@@ -392,8 +391,6 @@ bool CTxDB::LoadBlockIndex()
         iterator->Next();
     }
     delete iterator;
-
-    boost::this_thread::interruption_point();
 
     // Calculate nChainTrust
     vector<pair<int, CBlockIndex*> > vSortedByHeight;
@@ -449,7 +446,6 @@ bool CTxDB::LoadBlockIndex()
     map<pair<unsigned int, unsigned int>, CBlockIndex*> mapBlockPos;
     for (CBlockIndex* pindex = pindexBest; pindex && pindex->pprev; pindex = pindex->pprev)
     {
-        boost::this_thread::interruption_point();
         if (pindex->nHeight < nBestHeight-nCheckDepth)
             break;
         CBlock block;
@@ -555,7 +551,6 @@ bool CTxDB::LoadBlockIndex()
     }
     if (pindexFork)
     {
-        boost::this_thread::interruption_point();
         // Reorg back to the fork
         LogPrintf("LoadBlockIndex() : *** moving best chain pointer back to block %d\n", pindexFork->nHeight);
         CBlock block;

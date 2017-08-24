@@ -45,7 +45,7 @@ CNode* ConnectNode(CAddress addrConnect, const char *strDest = NULL);
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
 bool BindListenPort(const CService &bindAddr, std::string& strError=REF(std::string()));
-void StartNode(std::vector<coro_context> &fiberGroup);
+void StartNode(std::vector<coro> &fiberGroup);
 bool StopNode();
 void SocketSendData(CNode *pnode);
 
@@ -128,19 +128,17 @@ public:
 };
 
 
-
-
 class CNetMessage {
 public:
     bool in_data;                   // parsing header (false) or data (true)
-    std::vector<char> hdrbuf;       // partially received header
+	CDataStream hdrbuf;       // partially received header
     CMessageHeader hdr;             // complete header
     unsigned int nHdrPos;
-	std::vector<char> vRecv;        // received message data
+	CDataStream  vRecv;        // received message data
     unsigned int nDataPos;
     int64_t nTime;                  // time (in microseconds) of message receipt.
 
-    CNetMessage(int nTypeIn) {
+	CNetMessage(int nTypeIn, int nVersionIn) : hdrbuf(nTypeIn, nVersionIn), vRecv(nTypeIn, nVersionIn) {
         hdrbuf.resize(24);
         in_data = false;
         nHdrPos = 0;
@@ -158,10 +156,6 @@ public:
     int readData(const char *pch, unsigned int nBytes);
 };
 
-
-
-
-
 /** Information about a peer */
 class CNode
 {
@@ -169,11 +163,11 @@ public:
     // socket
     uint64_t nServices;
     SOCKET hSocket;
-    std::vector<char> ssSend;
+	CDataStream ssSend;
     size_t nSendSize; // total size of all vSendMsg entries
     size_t nSendOffset; // offset inside the first vSendMsg already sent
     uint64_t nSendBytes;
-    std::deque<std::vector<char>> vSendMsg;
+    std::deque<CSerializeData> vSendMsg;
 
     std::deque<CInv> vRecvGetData;
     std::deque<CNetMessage> vRecvMsg;
@@ -231,7 +225,7 @@ public:
     // Whether a ping is requested.
     bool fPingQueued;
 
-    CNode(SOCKET hSocketIn, CAddress addrIn, std::string addrNameIn = "", bool fInboundIn=false) : ssSend(SER_NETWORK, INIT_PROTO_VERSION), setAddrKnown(5000)
+    CNode(SOCKET hSocketIn, CAddress addrIn, std::string addrNameIn = "", bool fInboundIn=false) : setAddrKnown(5000), ssSend(SER_NETWORK, INIT_PROTO_VERSION)
     {
         nServices = 0;
         hSocket = hSocketIn;
@@ -308,8 +302,6 @@ public:
 
     void SetRecvVersion(int nVersionIn) {
         nRecvVersion = nVersionIn;
-        BOOST_FOREACH(CNetMessage &msg, vRecvMsg)
-            msg.SetVersion(nVersionIn);
     }
 
     CNode* AddRef()
@@ -371,20 +363,20 @@ public:
 
 
 
-    // TODO: Document the postcondition of this function.  Is cs_vSend locked?
+    // TODO: Document the postcondition of this function.
     void BeginMessage(const char* pszCommand) {
         assert(ssSend.size() == 0);
         ssSend << CMessageHeader(pszCommand, 0);
         LogPrint("net", "sending: %s ", pszCommand);
     }
 
-    // TODO: Document the precondition of this function.  Is cs_vSend locked?
+    // TODO: Document the precondition of this function.
     void AbortMessage() {
         ssSend.clear();
         LogPrint("net", "(aborted)\n");
     }
 
-    // TODO: Document the precondition of this function.  Is cs_vSend locked?
+    // TODO: Document the precondition of this function.
     void EndMessage() {
         if (mapArgs.count("-dropmessagestest") && GetRand(atoi(mapArgs["-dropmessagestest"])) == 0) {
             LogPrint("net", "dropmessages DROPPING SEND MESSAGE\n");
@@ -611,11 +603,8 @@ public:
 inline void RelayInventory(const CInv& inv)
 {
     // Put on lists to offer to the other nodes
-    {
-        LOCK(cs_vNodes);
-        BOOST_FOREACH(CNode* pnode, vNodes)
-            pnode->PushInventory(inv);
-    }
+    BOOST_FOREACH(CNode* pnode, vNodes)
+        pnode->PushInventory(inv);
 }
 
 class CTransaction;

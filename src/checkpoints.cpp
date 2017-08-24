@@ -80,14 +80,11 @@ namespace Checkpoints
 
     // ppcoin: get last synchronized checkpoint
     CBlockIndex* GetLastSyncCheckpoint()
-    {
-        LOCK(cs_hashSyncCheckpoint);
-        if (!mapBlockIndex.count(hashSyncCheckpoint))
-            error("GetSyncCheckpoint: block index missing for current sync-checkpoint %s", hashSyncCheckpoint.ToString());
-        else
-            return mapBlockIndex[hashSyncCheckpoint];
-        return NULL;
-    }
+    if (!mapBlockIndex.count(hashSyncCheckpoint))
+        error("GetSyncCheckpoint: block index missing for current sync-checkpoint %s", hashSyncCheckpoint.ToString());
+    else
+        return mapBlockIndex[hashSyncCheckpoint];
+    return NULL;
 
     // ppcoin: only descendant of current sync-checkpoint is allowed
     bool ValidateSyncCheckpoint(uint256 hashCheckpoint)
@@ -148,48 +145,45 @@ namespace Checkpoints
         return true;
     }
 
-    bool AcceptPendingSyncCheckpoint()
-    {
-        LOCK(cs_hashSyncCheckpoint);
-        if (hashPendingCheckpoint != 0 && mapBlockIndex.count(hashPendingCheckpoint))
-        {
-            if (!ValidateSyncCheckpoint(hashPendingCheckpoint))
-            {
-                hashPendingCheckpoint = 0;
-                checkpointMessagePending.SetNull();
-                return false;
-            }
+	bool AcceptPendingSyncCheckpoint() {
+		if (hashPendingCheckpoint != 0 && mapBlockIndex.count(hashPendingCheckpoint)) {
+			if (!ValidateSyncCheckpoint(hashPendingCheckpoint))
+			{
+				hashPendingCheckpoint = 0;
+				checkpointMessagePending.SetNull();
+				return false;
+			}
 
-            CTxDB txdb;
-            CBlockIndex* pindexCheckpoint = mapBlockIndex[hashPendingCheckpoint];
-            if (!pindexCheckpoint->IsInMainChain())
-            {
-                CBlock block;
-                if (!block.ReadFromDisk(pindexCheckpoint))
-                    return error("AcceptPendingSyncCheckpoint: ReadFromDisk failed for sync checkpoint %s", hashPendingCheckpoint.ToString());
-                if (!block.SetBestChain(txdb, pindexCheckpoint))
-                {
-                    hashInvalidCheckpoint = hashPendingCheckpoint;
-                    return error("AcceptPendingSyncCheckpoint: SetBestChain failed for sync checkpoint %s", hashPendingCheckpoint.ToString());
-                }
-            }
+			CTxDB txdb;
+			CBlockIndex* pindexCheckpoint = mapBlockIndex[hashPendingCheckpoint];
+			if (!pindexCheckpoint->IsInMainChain())
+			{
+				CBlock block;
+				if (!block.ReadFromDisk(pindexCheckpoint))
+					return error("AcceptPendingSyncCheckpoint: ReadFromDisk failed for sync checkpoint %s", hashPendingCheckpoint.ToString());
+				if (!block.SetBestChain(txdb, pindexCheckpoint))
+				{
+					hashInvalidCheckpoint = hashPendingCheckpoint;
+					return error("AcceptPendingSyncCheckpoint: SetBestChain failed for sync checkpoint %s", hashPendingCheckpoint.ToString());
+				}
+			}
 
-            if (!WriteSyncCheckpoint(hashPendingCheckpoint))
-                return error("AcceptPendingSyncCheckpoint(): failed to write sync checkpoint %s", hashPendingCheckpoint.ToString());
-            hashPendingCheckpoint = 0;
-            checkpointMessage = checkpointMessagePending;
-            checkpointMessagePending.SetNull();
-            LogPrintf("AcceptPendingSyncCheckpoint : sync-checkpoint at %s\n", hashSyncCheckpoint.ToString());
-            // relay the checkpoint
-            if (!checkpointMessage.IsNull())
-            {
-                BOOST_FOREACH(CNode* pnode, vNodes)
-                    checkpointMessage.RelayTo(pnode);
-            }
-            return true;
-        }
-        return false;
-    }
+			if (!WriteSyncCheckpoint(hashPendingCheckpoint))
+				return error("AcceptPendingSyncCheckpoint(): failed to write sync checkpoint %s", hashPendingCheckpoint.ToString());
+			hashPendingCheckpoint = 0;
+			checkpointMessage = checkpointMessagePending;
+			checkpointMessagePending.SetNull();
+			LogPrintf("AcceptPendingSyncCheckpoint : sync-checkpoint at %s\n", hashSyncCheckpoint.ToString());
+			// relay the checkpoint
+			if (!checkpointMessage.IsNull())
+			{
+				BOOST_FOREACH(CNode* pnode, vNodes)
+					checkpointMessage.RelayTo(pnode);
+			}
+			return true;
+		}
+		return false;
+	}
 
     // Automatically select a suitable sync-checkpoint 
     uint256 AutoSelectSyncCheckpoint()
@@ -207,7 +201,6 @@ namespace Checkpoints
         if (TestNet()) return true; // Testnet has no checkpoints
         int nHeight = pindexPrev->nHeight + 1;
 
-        LOCK(cs_hashSyncCheckpoint);
         // sync-checkpoint should always be accepted block
         assert(mapBlockIndex.count(hashSyncCheckpoint));
         const CBlockIndex* pindexSync = mapBlockIndex[hashSyncCheckpoint];
@@ -231,7 +224,6 @@ namespace Checkpoints
 
     bool WantedByPendingSyncCheckpoint(uint256 hashBlock)
     {
-        LOCK(cs_hashSyncCheckpoint);
         if (hashPendingCheckpoint == 0)
             return false;
         if (hashBlock == hashPendingCheckpoint)
@@ -245,7 +237,6 @@ namespace Checkpoints
     // ppcoin: reset synchronized checkpoint to last hardened checkpoint
     bool ResetSyncCheckpoint()
     {
-        LOCK(cs_hashSyncCheckpoint);
         const uint256& hash = mapCheckpoints.rbegin()->second;
         if (mapBlockIndex.count(hash) && !mapBlockIndex[hash]->IsInMainChain())
         {
@@ -288,7 +279,6 @@ namespace Checkpoints
 
     void AskForPendingSyncCheckpoint(CNode* pfrom)
     {
-        LOCK(cs_hashSyncCheckpoint);
         if (pfrom && hashPendingCheckpoint != 0 && (!mapBlockIndex.count(hashPendingCheckpoint)) && (!mapOrphanBlocks.count(hashPendingCheckpoint)))
             pfrom->AskFor(CInv(MSG_BLOCK, hashPendingCheckpoint));
     }
@@ -336,11 +326,8 @@ namespace Checkpoints
         }
 
         // Relay checkpoint
-        {
-            LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode* pnode, vNodes)
-                checkpoint.RelayTo(pnode);
-        }
+        BOOST_FOREACH(CNode* pnode, vNodes)
+            checkpoint.RelayTo(pnode);
         return true;
     }
 }
@@ -384,7 +371,6 @@ bool CSyncCheckpoint::ProcessSyncCheckpoint(CNode* pfrom)
     if (!CheckSignature())
         return false;
 
-    LOCK(Checkpoints::cs_hashSyncCheckpoint);
     if (!mapBlockIndex.count(hashCheckpoint))
     {
         // We haven't received the checkpoint chain, keep the checkpoint as pending

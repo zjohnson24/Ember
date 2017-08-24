@@ -15,7 +15,7 @@
 
 #include "compat.h"
 
-bool CCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<unsigned char>& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod)
+bool CCrypter::SetKeyFromPassphrase(const std::string &strKeyData, const std::vector<unsigned char>& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod)
 {
     if (nRounds < 1 || chSalt.size() != WALLET_CRYPTO_SALT_SIZE)
         return false;
@@ -136,9 +136,7 @@ bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<unsigned
     return cKeyCrypter.Decrypt(vchCiphertext, *((CKeyingMaterial*)&vchPlaintext));
 }
 
-bool CCryptoKeyStore::SetCrypted()
-{
-    LOCK(cs_KeyStore);
+bool CCryptoKeyStore::SetCrypted() {
     if (fUseCrypto)
         return true;
     if (!mapKeys.empty())
@@ -147,144 +145,113 @@ bool CCryptoKeyStore::SetCrypted()
     return true;
 }
 
-bool CCryptoKeyStore::Lock()
-{
+bool CCryptoKeyStore::Lock() {
+    if (!SetCrypted())
+        return false;
+    vMasterKey.clear();
+    NotifyStatusChanged(this);
+    return true;
+}
+
+bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn) {
+	if (!SetCrypted())
+        return false;
+
+    CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
+    for (; mi != mapCryptedKeys.end(); ++mi) {
+        const CPubKey &vchPubKey = (*mi).second.first;
+        const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
+        CKeyingMaterial vchSecret;
+        if(!DecryptSecret(vMasterKeyIn, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
+            return false;
+        if (vchSecret.size() != 32)
+            return false;
+        CKey key;
+        key.Set(vchSecret.begin(), vchSecret.end(), vchPubKey.IsCompressed());
+        if (key.GetPubKey() == vchPubKey)
+            break;
+        return false;
+    }
+    vMasterKey = vMasterKeyIn;
+    NotifyStatusChanged(this);
+    return true;
+}
+
+bool CCryptoKeyStore::AddKeyPubKey(const CKey& key, const CPubKey &pubkey) {
+    if (!IsCrypted())
+        return CBasicKeyStore::AddKeyPubKey(key, pubkey);
+
+    if (IsLocked())
+        return false;
+
+    std::vector<unsigned char> vchCryptedSecret;
+    CKeyingMaterial vchSecret(key.begin(), key.end());
+    if (!EncryptSecret(vMasterKey, vchSecret, pubkey.GetHash(), vchCryptedSecret))
+        return false;
+
+    if (!AddCryptedKey(pubkey, vchCryptedSecret))
+        return false;
+    return true;
+}
+
+
+bool CCryptoKeyStore::AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret) {
     if (!SetCrypted())
         return false;
 
-    {
-        LOCK(cs_KeyStore);
-        vMasterKey.clear();
-    }
-
-    NotifyStatusChanged(this);
+    mapCryptedKeys[vchPubKey.GetID()] = make_pair(vchPubKey, vchCryptedSecret);
     return true;
 }
 
-bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
-{
-    {
-        LOCK(cs_KeyStore);
-        if (!SetCrypted())
-            return false;
+bool CCryptoKeyStore::GetKey(const CKeyID &address, CKey& keyOut) const {
+    if (!IsCrypted())
+        return CBasicKeyStore::GetKey(address, keyOut);
 
-        CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
-        for (; mi != mapCryptedKeys.end(); ++mi)
-        {
-            const CPubKey &vchPubKey = (*mi).second.first;
-            const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
-            CKeyingMaterial vchSecret;
-            if(!DecryptSecret(vMasterKeyIn, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
-                return false;
-            if (vchSecret.size() != 32)
-                return false;
-            CKey key;
-            key.Set(vchSecret.begin(), vchSecret.end(), vchPubKey.IsCompressed());
-            if (key.GetPubKey() == vchPubKey)
-                break;
+    CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
+    if (mi != mapCryptedKeys.end())
+    {
+        const CPubKey &vchPubKey = (*mi).second.first;
+        const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
+        CKeyingMaterial vchSecret;
+        if (!DecryptSecret(vMasterKey, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
             return false;
-        }
-        vMasterKey = vMasterKeyIn;
+        if (vchSecret.size() != 32)
+            return false;
+        keyOut.Set(vchSecret.begin(), vchSecret.end(), vchPubKey.IsCompressed());
+        return true;
     }
-    NotifyStatusChanged(this);
-    return true;
+    return false;
 }
 
-bool CCryptoKeyStore::AddKeyPubKey(const CKey& key, const CPubKey &pubkey)
-{
+bool CCryptoKeyStore::GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const {
+    if (!IsCrypted())
+        return CKeyStore::GetPubKey(address, vchPubKeyOut);
+
+    CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
+    if (mi != mapCryptedKeys.end())
     {
-        LOCK(cs_KeyStore);
-        if (!IsCrypted())
-            return CBasicKeyStore::AddKeyPubKey(key, pubkey);
+        vchPubKeyOut = (*mi).second.first;
+        return true;
+    }
+    return false;
+}
 
-        if (IsLocked())
-            return false;
+bool CCryptoKeyStore::EncryptKeys(CKeyingMaterial& vMasterKeyIn) {
+    if (!mapCryptedKeys.empty() || IsCrypted())
+        return false;
 
-        std::vector<unsigned char> vchCryptedSecret;
+    fUseCrypto = true;
+    BOOST_FOREACH(KeyMap::value_type& mKey, mapKeys)
+    {
+        const CKey &key = mKey.second;
+        CPubKey vchPubKey = key.GetPubKey();
         CKeyingMaterial vchSecret(key.begin(), key.end());
-        if (!EncryptSecret(vMasterKey, vchSecret, pubkey.GetHash(), vchCryptedSecret))
+        std::vector<unsigned char> vchCryptedSecret;
+        if (!EncryptSecret(vMasterKeyIn, vchSecret, vchPubKey.GetHash(), vchCryptedSecret))
             return false;
-
-        if (!AddCryptedKey(pubkey, vchCryptedSecret))
+        if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
             return false;
     }
-    return true;
-}
-
-
-bool CCryptoKeyStore::AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret)
-{
-    {
-        LOCK(cs_KeyStore);
-        if (!SetCrypted())
-            return false;
-
-        mapCryptedKeys[vchPubKey.GetID()] = make_pair(vchPubKey, vchCryptedSecret);
-    }
-    return true;
-}
-
-bool CCryptoKeyStore::GetKey(const CKeyID &address, CKey& keyOut) const
-{
-    {
-        LOCK(cs_KeyStore);
-        if (!IsCrypted())
-            return CBasicKeyStore::GetKey(address, keyOut);
-
-        CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
-        if (mi != mapCryptedKeys.end())
-        {
-            const CPubKey &vchPubKey = (*mi).second.first;
-            const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
-            CKeyingMaterial vchSecret;
-            if (!DecryptSecret(vMasterKey, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
-                return false;
-            if (vchSecret.size() != 32)
-                return false;
-            keyOut.Set(vchSecret.begin(), vchSecret.end(), vchPubKey.IsCompressed());
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CCryptoKeyStore::GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const
-{
-    {
-        LOCK(cs_KeyStore);
-        if (!IsCrypted())
-            return CKeyStore::GetPubKey(address, vchPubKeyOut);
-
-        CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
-        if (mi != mapCryptedKeys.end())
-        {
-            vchPubKeyOut = (*mi).second.first;
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CCryptoKeyStore::EncryptKeys(CKeyingMaterial& vMasterKeyIn)
-{
-    {
-        LOCK(cs_KeyStore);
-        if (!mapCryptedKeys.empty() || IsCrypted())
-            return false;
-
-        fUseCrypto = true;
-        BOOST_FOREACH(KeyMap::value_type& mKey, mapKeys)
-        {
-            const CKey &key = mKey.second;
-            CPubKey vchPubKey = key.GetPubKey();
-            CKeyingMaterial vchSecret(key.begin(), key.end());
-            std::vector<unsigned char> vchCryptedSecret;
-            if (!EncryptSecret(vMasterKeyIn, vchSecret, vchPubKey.GetHash(), vchCryptedSecret))
-                return false;
-            if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
-                return false;
-        }
-        mapKeys.clear();
-    }
+    mapKeys.clear();
     return true;
 }

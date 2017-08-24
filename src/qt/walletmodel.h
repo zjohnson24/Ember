@@ -5,8 +5,6 @@
 #include <vector>
 #include <map>
 
-#include "allocators.h" /* for SecureString */
-
 class OptionsModel;
 class AddressTableModel;
 class TransactionTableModel;
@@ -88,10 +86,10 @@ public:
     SendCoinsReturn sendCoins(const QList<SendCoinsRecipient> &recipients, const CCoinControl *coinControl=NULL);
 
     // Wallet encryption
-    bool setWalletEncrypted(bool encrypted, const SecureString &passphrase);
+    bool setWalletEncrypted(bool encrypted, const std::string &passphrase);
     // Passphrase only needed when unlocking
-    bool setWalletLocked(bool locked, const SecureString &passPhrase=SecureString());
-    bool changePassphrase(const SecureString &oldPass, const SecureString &newPass);
+    bool setWalletLocked(bool locked, const std::string &passPhrase=std::string());
+    bool changePassphrase(const std::string &oldPass, const std::string &newPass);
     // Wallet backup
     bool backupWallet(const QString &filename);
 

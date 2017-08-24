@@ -394,9 +394,7 @@ void CNode::CloseSocketDisconnect()
     }
 
     // in case this fails, we'll empty the recv buffer when the CNode is deleted
-    TRY_LOCK(cs_vRecvMsg, lockRecv);
-    if (lockRecv)
-        vRecvMsg.clear();
+    vRecvMsg.clear();
 
     // if this was the sync node, we'll need a new one
     if (this == pnodeSync)
@@ -640,27 +638,9 @@ void ThreadSocketHandler()
             BOOST_FOREACH(CNode* pnode, vNodesDisconnectedCopy)
             {
                 // wait until threads are done using it
-                if (pnode->GetRefCount() <= 0)
-                {
-                    bool fDelete = false;
-                    {
-                        TRY_LOCK(pnode->cs_vSend, lockSend);
-                        if (lockSend)
-                        {
-                            TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
-                            if (lockRecv)
-                            {
-                                TRY_LOCK(pnode->cs_inventory, lockInv);
-                                if (lockInv)
-                                    fDelete = true;
-                            }
-                        }
-                    }
-                    if (fDelete)
-                    {
-                        vNodesDisconnected.remove(pnode);
-                        delete pnode;
-                    }
+                if (pnode->GetRefCount() <= 0) {
+                    vNodesDisconnected.remove(pnode);
+                    delete pnode;
                 }
             }
         }
@@ -805,17 +785,14 @@ void ThreadSocketHandler()
                 continue;
             }
             if (FD_ISSET(pnode->hSocket, &fdsetRecv) || FD_ISSET(pnode->hSocket, &fdsetError)) {
-                TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
-                if (lockRecv) {
-                    if (pnode->GetTotalRecvSize() > ReceiveFloodSize()) {
-                        if (!pnode->fDisconnect) {
-                            LogPrintf("socket recv flood control disconnect (%u bytes)\n", pnode->GetTotalRecvSize());
-                        }
-                        pnode->CloseSocketDisconnect();
-                    } else {
-                        CNetMessage& msg = CNetMessage(SER_NETWORK, pnode->nRecvVersion);
-                        pnode->RecvMsg(msg);
+                if (pnode->GetTotalRecvSize() > ReceiveFloodSize()) {
+                    if (!pnode->fDisconnect) {
+                        LogPrintf("socket recv flood control disconnect (%u bytes)\n", pnode->GetTotalRecvSize());
                     }
+                    pnode->CloseSocketDisconnect();
+                } else {
+                    CNetMessage& msg = CNetMessage(SER_NETWORK, pnode->nRecvVersion);
+                    pnode->RecvMsg(msg);
                 }
             }
 
@@ -996,7 +973,6 @@ void ThreadDNSAddressSeed(void * _) {
         (!GetBoolArg("-forcednsseed", false))) {
         MilliSleep(11 * 1000);
 
-        LOCK(cs_vNodes);
         if (vNodes.size() >= 2) {
             LogPrintf("P2P peers available. Skipped DNS seeding.\n");
             return;
@@ -1054,18 +1030,13 @@ void DumpAddresses()
 void static ProcessOneShot()
 {
     string strDest;
-    {
-        LOCK(cs_vOneShots);
-        if (vOneShots.empty())
-            return;
-        strDest = vOneShots.front();
-        vOneShots.pop_front();
-    }
+    if (vOneShots.empty())
+        return;
+    strDest = vOneShots.front();
+    vOneShots.pop_front();
     CAddress addr;
-    CSemaphoreGrant grant(*semOutbound, true);
-    if (grant) {
-        if (!OpenNetworkConnection(addr, &grant, strDest.c_str(), true))
-            AddOneShot(strDest);
+    if (!OpenNetworkConnection(addr, strDest.c_str(), true)) {
+        AddOneShot(strDest);
     }
 }
 
@@ -1098,9 +1069,6 @@ void ThreadOpenConnections()
 
         MilliSleep(500);
 
-        CSemaphoreGrant grant(*semOutbound);
-        boost::this_thread::interruption_point();
-
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
         if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
             static bool done = false;
@@ -1120,13 +1088,11 @@ void ThreadOpenConnections()
         // Do this here so we don't have to critsect vNodes inside mapAddresses critsect.
         int nOutbound = 0;
         set<vector<unsigned char> > setConnected;
-        {
-            LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode* pnode, vNodes) {
-                if (!pnode->fInbound) {
-                    setConnected.insert(pnode->addr.GetGroup());
-                    nOutbound++;
-                }
+
+        BOOST_FOREACH(CNode* pnode, vNodes) {
+            if (!pnode->fInbound) {
+                setConnected.insert(pnode->addr.GetGroup());
+                nOutbound++;
             }
         }
 
@@ -1170,23 +1136,17 @@ void ThreadOpenConnections()
 
 void ThreadOpenAddedConnections()
 {
-    {
-        LOCK(cs_vAddedNodes);
-        vAddedNodes = mapMultiArgs["-addnode"];
-    }
+    vAddedNodes = mapMultiArgs["-addnode"];
 
     if (HaveNameProxy()) {
         while(true) {
             list<string> lAddresses(0);
-            {
-                LOCK(cs_vAddedNodes);
-                BOOST_FOREACH(string& strAddNode, vAddedNodes)
-                    lAddresses.push_back(strAddNode);
-            }
+			BOOST_FOREACH(string& strAddNode, vAddedNodes) {
+				lAddresses.push_back(strAddNode);
+			}
             BOOST_FOREACH(string& strAddNode, lAddresses) {
                 CAddress addr;
-                CSemaphoreGrant grant(*semOutbound);
-                OpenNetworkConnection(addr, &grant, strAddNode.c_str());
+                OpenNetworkConnection(addr, strAddNode.c_str());
                 MilliSleep(500);
             }
             MilliSleep(120000); // Retry every 2 minutes
@@ -1196,11 +1156,8 @@ void ThreadOpenAddedConnections()
     for (unsigned int i = 0; true; i++)
     {
         list<string> lAddresses(0);
-        {
-            LOCK(cs_vAddedNodes);
-            BOOST_FOREACH(string& strAddNode, vAddedNodes)
-                lAddresses.push_back(strAddNode);
-        }
+        BOOST_FOREACH(string& strAddNode, vAddedNodes)
+            lAddresses.push_back(strAddNode);
 
         list<vector<CService> > lservAddressesToAdd(0);
         BOOST_FOREACH(string& strAddNode, lAddresses)
@@ -1209,31 +1166,25 @@ void ThreadOpenAddedConnections()
             if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(), fNameLookup, 0))
             {
                 lservAddressesToAdd.push_back(vservNode);
-                {
-                    LOCK(cs_setservAddNodeAddresses);
-                    BOOST_FOREACH(CService& serv, vservNode)
-                        setservAddNodeAddresses.insert(serv);
-                }
+                BOOST_FOREACH(CService& serv, vservNode)
+                    setservAddNodeAddresses.insert(serv);
             }
         }
         // Attempt to connect to each IP for each addnode entry until at least one is successful per addnode entry
         // (keeping in mind that addnode entries can have many IPs if fNameLookup)
-        {
-            LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode* pnode, vNodes)
-                for (list<vector<CService> >::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++)
-                    BOOST_FOREACH(CService& addrNode, *(it))
-                        if (pnode->addr == addrNode)
-                        {
-                            it = lservAddressesToAdd.erase(it);
-                            it--;
-                            break;
-                        }
-        }
-        BOOST_FOREACH(vector<CService>& vserv, lservAddressesToAdd)
-        {
-            CSemaphoreGrant grant(*semOutbound);
-            OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
+		BOOST_FOREACH(CNode* pnode, vNodes) {
+			for (list<vector<CService> >::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++) {
+				BOOST_FOREACH(CService& addrNode, *(it)) {
+					if (pnode->addr == addrNode) {
+						it = lservAddressesToAdd.erase(it);
+						it--;
+						break;
+					}
+				}
+			}
+		}
+        BOOST_FOREACH(vector<CService>& vserv, lservAddressesToAdd) {
+            OpenNetworkConnection(CAddress(vserv[i % vserv.size()]));
             MilliSleep(500);
         }
         MilliSleep(120000); // Retry every 2 minutes
@@ -1511,7 +1462,7 @@ void static Discover() {
 
 }
 
-void StartNode(std::vector<coro_context> &fiberGroup) {
+void StartNode(std::vector<coro> &fiberGroup) {
     int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 512));
 	if (pnodeLocalHost == NULL) {
 		pnodeLocalHost = new CNode(INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), nLocalServices));

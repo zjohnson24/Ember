@@ -23,7 +23,6 @@ private:
     unsigned int nTransactionsUpdated;
 
 public:
-    mutable CCriticalSection cs;
     std::map<uint256, CTransaction> mapTx;
     std::map<COutPoint, CInPoint> mapNextTx;
 
@@ -37,15 +36,11 @@ public:
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);
 
-    unsigned long size() const
-    {
-        LOCK(cs);
+    unsigned long size() const {
         return mapTx.size();
     }
 
-    bool exists(uint256 hash) const
-    {
-        LOCK(cs);
+    bool exists(uint256 hash) const {
         return (mapTx.count(hash) != 0);
     }
 

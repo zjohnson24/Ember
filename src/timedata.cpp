@@ -5,7 +5,6 @@
 #include "timedata.h"
 
 #include "netbase.h"
-#include "sync.h"
 #include "ui_interface.h"
 #include "util.h"
 
@@ -13,7 +12,6 @@
 
 using namespace std;
 
-static CCriticalSection cs_nTimeOffset;
 static int64_t nTimeOffset = 0;
 
 //
@@ -24,22 +22,17 @@ static int64_t nTimeOffset = 0;
 //  - The user (asking the user to fix the system clock if the first two disagree)
 //
 //
-int64_t GetTimeOffset()
-{
-    LOCK(cs_nTimeOffset);
+int64_t GetTimeOffset() {
     return nTimeOffset;
 }
 
-int64_t GetAdjustedTime()
-{
+int64_t GetAdjustedTime() {
     return GetTime() + GetTimeOffset();
 }
 
 void AddTimeData(const CNetAddr& ip, int64_t nTime)
 {
     int64_t nOffsetSample = nTime - GetTime();
-
-    LOCK(cs_nTimeOffset);
     // Ignore duplicates
     static set<CNetAddr> setKnown;
     if (!setKnown.insert(ip).second)

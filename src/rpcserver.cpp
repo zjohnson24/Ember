@@ -21,7 +21,6 @@
 #include "base58.h"
 #include "init.h"
 #include "util.h"
-#include "sync.h"
 #include "base58.h"
 #include "db.h"
 #include "ui_interface.h"
@@ -812,24 +811,9 @@ json_spirit::Value CRPCTable::execute(const std::string &strMethod, const json_s
     {
         // Execute
         Value result;
-        {
-            if (pcmd->threadSafe)
-                result = pcmd->actor(params, false);
-#ifdef ENABLE_WALLET
-            else if (!pwalletMain) {
-                LOCK(cs_main);
-                result = pcmd->actor(params, false);
-            } else {
-                LOCK2(cs_main, pwalletMain->cs_wallet);
-                result = pcmd->actor(params, false);
-            }
-#else // ENABLE_WALLET
-            else {
-                LOCK(cs_main);
-                result = pcmd->actor(params, false);
-            }
-#endif // !ENABLE_WALLET
-        }
+		if (pcmd->threadSafe) {
+			result = pcmd->actor(params, false);
+		}
         return result;
     }
     catch (std::exception& e)

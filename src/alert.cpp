@@ -22,7 +22,6 @@
 using namespace std;
 
 map<uint256, CAlert> mapAlerts;
-CCriticalSection cs_mapAlerts;
 
 void CUnsignedAlert::SetNull()
 {
@@ -157,12 +156,11 @@ bool CAlert::CheckSignature() const
 CAlert CAlert::getAlertByHash(const uint256 &hash)
 {
     CAlert retval;
-    {
-        LOCK(cs_mapAlerts);
-        map<uint256, CAlert>::iterator mi = mapAlerts.find(hash);
-        if(mi != mapAlerts.end())
-            retval = mi->second;
-    }
+    map<uint256, CAlert>::iterator mi = mapAlerts.find(hash);
+	if (mi != mapAlerts.end()) {
+		retval = mi->second;
+	}
+    
     return retval;
 }
 
@@ -195,8 +193,7 @@ bool CAlert::ProcessAlert(bool fThread)
             return false;
     }
 
-    {
-        LOCK(cs_mapAlerts);
+
         // Cancel previous alerts
         for (map<uint256, CAlert>::iterator mi = mapAlerts.begin(); mi != mapAlerts.end();)
         {
@@ -244,14 +241,9 @@ bool CAlert::ProcessAlert(bool fThread)
                 std::string safeStatus = SanitizeString(strStatusBar);
                 safeStatus = singleQuote+safeStatus+singleQuote;
                 boost::replace_all(strCmd, "%s", safeStatus);
-
-                if (fThread)
-                    boost::thread t(runCommand, strCmd); // thread runs free
-                else
-                    runCommand(strCmd);
+				runCommand(strCmd);
             }
         }
-    }
 
     LogPrint("alert", "accepted alert %d, AppliesToMe()=%d\n", nID, AppliesToMe());
     return true;
