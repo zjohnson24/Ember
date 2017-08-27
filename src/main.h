@@ -130,7 +130,7 @@ std::string GetWarnings(std::string strFor);
 bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
 uint256 WantedByOrphan(const COrphanBlock* pblockOrphan);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
-int StakeMiner(CWallet *pwallet);
+int StakeMiner(void **);
 
 
 /** (try to) add transaction to memory pool **/

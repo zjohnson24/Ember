@@ -16,8 +16,6 @@
 #include <stdint.h>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
@@ -254,15 +252,10 @@ int CommandLineRPC(int argc, char *argv[])
             else
                 strPrint = write_string(result, true);
         }
-    }
-    catch (boost::thread_interrupted) {
-        throw;
-    }
-    catch (std::exception& e) {
+    } catch (std::exception& e) {
         strPrint = string("error: ") + e.what();
         nRet = 87;
-    }
-    catch (...) {
+    } catch (...) {
         PrintException(NULL, "CommandLineRPC()");
     }
 

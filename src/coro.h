@@ -22,17 +22,18 @@
 * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-/* int ascending (coro_args) {
-*    coro_ctx_start;
-*    int i;
-*    coro_ctx_stop(foo);
-*
-*    coro_begin(foo);
-*    for (foo->i=0; foo->i<10; foo->i++) {
-*       coro_return(foo->i);
-*    }
-*    coro_finish(-1);
-*  }
+/*
+int ascending (coro_args) {
+    coro_ctx_start;
+    int i;
+    coro_ctx_stop(foo);
+
+    coro_begin(foo);
+    for (foo->i=0; foo->i<10; foo->i++) {
+       coro_return(foo->i);
+    }
+    coro_finish(-1);
+}
 */
 
 #ifndef CORO_H
@@ -45,35 +46,28 @@ extern "C" {
 #endif
 
 #define coro_args void **coro_params
-#define coro_ctx_start   struct coro_ctx { int coro_line
+#define coro_ctx_start struct coro_ctx { int coro_line
 #define coro_ctx_stop(x) } *x = (struct coro_ctx *)*coro_params
 
-#define coro_begin(x) if(!x) {x= *coro_params=malloc(sizeof(*x)); x->coro_line=0;}\
+#define coro_begin(x) if(!x) {x=(coro_ctx *)((*coro_params) = malloc(sizeof(*x))); x->coro_line=0;}\
                       if (x) switch(x->coro_line) { case 0:;
 #define coro_finish(z)     } free(*coro_params); *coro_params=0; return (z)
 #define coro_finish_       } free(*coro_params); *coro_params=0; return
 
-#define coro_return(z)     \
-        do {\
-            ((struct coro_ctx *)*coro_params)->coro_line=__LINE__;\
-            return (z); case __LINE__:;\
-        } while (0)
-#define coro_return_       \
-        do {\
-            ((struct coro_ctx *)*coro_params)->coro_line=__LINE__;\
-            return; case __LINE__:;\
-        } while (0)
+#define coro_return(z) do { ((struct coro_ctx *)*coro_params)->coro_line=(__LINE__);\
+            return (z); case (__LINE__):;} while (0)
+#define coro_return_  do { ((struct coro_ctx *)*coro_params)->coro_line=(__LINE__);\
+            return; case (__LINE__):;} while (0)
 
 #define coro_stop(z) do{ free(*coro_params); *coro_params=0; return (z); }while(0)
 #define coro_stop_   do{ free(*coro_params); *coro_params=0; return; }while(0)
 
-#define coro_ctx    void *
 #define coro_abort(ctx) do { free (ctx); ctx = 0; } while (0)
 
 typedef struct {
-	void(*coro)();
-	coro_ctx ctx;
-	uint16_t args_len;
+	int(*coro)(coro_args);
+	void *ctx;
+	int time;
 	void *args[];
 } coro;
 

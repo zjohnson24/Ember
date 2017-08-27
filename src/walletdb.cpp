@@ -231,7 +231,7 @@ void CWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccountin
             break;
 
         acentry.strAccount.insert(acentry.strAccount.length(), (char*)datValue.data);
-		acentry.nEntryNo = datKey;
+		acentry.nEntryNo = datKey.data;
         entries.push_back(acentry);
     }
 
@@ -678,54 +678,69 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet) {
     return result;
 }
 
-void FlushWalletDB(const string& strFile) {
-    static bool fOneThread;
-    if (fOneThread)
-        return;
-    fOneThread = true;
-    if (!GetBoolArg("-flushwallet", true))
-        return;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-    unsigned int nLastSeen = nWalletDBUpdated;
-    unsigned int nLastFlushed = nWalletDBUpdated;
-    int64_t nLastWalletUpdate = GetTime();
-    while (true)
-    {
-        MilliSleep(500);
+	int FlushWalletDB(coro_args, const string& strFile) {
+		coro_ctx_start;
+		int i;
+		coro_ctx_stop(FlushWalletDB);
 
-        if (nLastSeen != nWalletDBUpdated)
-        {
-            nLastSeen = nWalletDBUpdated;
-            nLastWalletUpdate = GetTime();
-        }
+		coro_begin(FlushWalletDB);
+		for (foo->i = 0; foo->i < 10; foo->i++) {
+			coro_return(foo->i);
+		}
+		coro_finish(-1);
 
-        if (nLastFlushed != nWalletDBUpdated && GetTime() - nLastWalletUpdate >= 2) {
-            // Don't do this if any databases are in use
-            int nRefCount = 0;
-            map<string, int>::iterator mi = bitdb.mapFileUseCount.begin();
-            while (mi != bitdb.mapFileUseCount.end()) {
-                nRefCount += (*mi).second;
-                mi++;
-            }
 
-            if (nRefCount == 0) {
-                map<string, int>::iterator mi = bitdb.mapFileUseCount.find(strFile);
-                if (mi != bitdb.mapFileUseCount.end()) {
-                    LogPrint("db", "Flushing wallet.dat\n");
-                    nLastFlushed = nWalletDBUpdated;
-                    int64_t nStart = GetTimeMillis();
 
-                    // Flush wallet.dat so it's self contained
-                    bitdb.CloseDb(strFile);
-                    bitdb.CheckpointLSN(strFile);
+		if (!GetBoolArg("-flushwallet", true))
+			coro_abort
 
-                    bitdb.mapFileUseCount.erase(mi++);
-                    LogPrint("db", "Flushed wallet.dat %dms\n", GetTimeMillis() - nStart);
-                }
-            }
-        }
-    }
+			unsigned int nLastSeen = nWalletDBUpdated;
+		unsigned int nLastFlushed = nWalletDBUpdated;
+		int64_t nLastWalletUpdate = GetTime();
+		while (true) {
+			coro_return(5000);
+
+			if (nLastSeen != nWalletDBUpdated)
+			{
+				nLastSeen = nWalletDBUpdated;
+				nLastWalletUpdate = GetTime();
+			}
+
+			if (nLastFlushed != nWalletDBUpdated && GetTime() - nLastWalletUpdate >= 2) {
+				// Don't do this if any databases are in use
+				int nRefCount = 0;
+				map<string, int>::iterator mi = bitdb.mapFileUseCount.begin();
+				while (mi != bitdb.mapFileUseCount.end()) {
+					nRefCount += (*mi).second;
+					mi++;
+				}
+
+				if (nRefCount == 0) {
+					map<string, int>::iterator mi = bitdb.mapFileUseCount.find(strFile);
+					if (mi != bitdb.mapFileUseCount.end()) {
+						LogPrint("db", "Flushing wallet.dat\n");
+						nLastFlushed = nWalletDBUpdated;
+						int64_t nStart = GetTimeMillis();
+
+						// Flush wallet.dat so it's self contained
+						bitdb.CloseDb(strFile);
+						bitdb.CheckpointLSN(strFile);
+
+						bitdb.mapFileUseCount.erase(mi++);
+						LogPrint("db", "Flushed wallet.dat %dms\n", GetTimeMillis() - nStart);
+					}
+				}
+			}
+		}
+	}
+
+#ifdef __cplusplus
 }
+#endif
 
 bool BackupWallet(const CWallet& wallet, const string& strDest) {
 	if (!wallet.fFileBacked) {

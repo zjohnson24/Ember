@@ -120,7 +120,6 @@ Value addnode(const Array& params, bool fHelp)
         return Value::null;
     }
 
-    LOCK(cs_vAddedNodes);
     vector<string>::iterator it = vAddedNodes.begin();
     for(; it != vAddedNodes.end(); it++)
         if (strNode == *it)

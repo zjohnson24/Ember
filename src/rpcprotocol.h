@@ -16,8 +16,6 @@
 
 #include <boost/iostreams/concepts.hpp>
 #include <boost/iostreams/stream.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
 
 #include "json/json_spirit_reader_template.h"
 #include "json/json_spirit_utils.h"

@@ -76,15 +76,15 @@ namespace Checkpoints
     CSyncCheckpoint checkpointMessage;
     CSyncCheckpoint checkpointMessagePending;
     uint256 hashInvalidCheckpoint = 0;
-    CCriticalSection cs_hashSyncCheckpoint;
 
     // ppcoin: get last synchronized checkpoint
-    CBlockIndex* GetLastSyncCheckpoint()
-    if (!mapBlockIndex.count(hashSyncCheckpoint))
-        error("GetSyncCheckpoint: block index missing for current sync-checkpoint %s", hashSyncCheckpoint.ToString());
-    else
-        return mapBlockIndex[hashSyncCheckpoint];
-    return NULL;
+	CBlockIndex* GetLastSyncCheckpoint() {
+		if (!mapBlockIndex.count(hashSyncCheckpoint))
+			error("GetSyncCheckpoint: block index missing for current sync-checkpoint %s", hashSyncCheckpoint.ToString());
+		else
+			return mapBlockIndex[hashSyncCheckpoint];
+		return NULL;
+	}
 
     // ppcoin: only descendant of current sync-checkpoint is allowed
     bool ValidateSyncCheckpoint(uint256 hashCheckpoint)

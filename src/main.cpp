@@ -1704,8 +1704,7 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
       DateTimeStrFormat("%x %H:%M:%S", pindexBest->GetBlockTime()));
 
     // Check the version of the last 100 blocks to see if we need to upgrade:
-    if (!fIsInitialDownload)
-    {
+    if (!fIsInitialDownload) {
         int nUpgraded = 0;
         const CBlockIndex* pindex = pindexBest;
         for (int i = 0; i < 100 && pindex != NULL; i++)
@@ -1721,13 +1720,14 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
             strMiscWarning = _("Warning: This version is obsolete, upgrade required!");
     }
 
+	/*
     std::string strCmd = GetArg("-blocknotify", "");
-
     if (!fIsInitialDownload && !strCmd.empty())
     {
         boost::replace_all(strCmd, "%s", hashBestChain.GetHex());
         boost::thread t(runCommand, strCmd); // thread runs free
     }
+	*/
 
     return true;
 }
@@ -3508,7 +3508,9 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
     static int64_t nLastRebroadcast;
     if (!IsInitialBlockDownload() && (GetTime() - nLastRebroadcast > 24 * 60 * 60))
     {
-        BOOST_FOREACH(CNode* pnode, vNodes)
+        BOOST_FOREACH(CNode* pnode, vNodes)getaddr
+			etaddr
+			etaddr
         {
             // Periodically clear setAddrKnown to allow refresh broadcasts
             if (nLastRebroadcast)

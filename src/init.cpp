@@ -23,10 +23,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/convenience.hpp>
-#include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <openssl/crypto.h>
-#include <chrono>
+
 
 #ifndef _WIN32
 #include <signal.h>
@@ -953,11 +952,10 @@ bool AppInit(int argc, char* argv[]) {
 				LogPrintf("Staking disabled\n");
 			}
 			else if (pwalletMain) {
-				coro c = coro();
-				c.coro = &StakeMiner;
-				c.args_len = 2;
-				fiberGroup.push_back();
-				coro_create(, pwalletMain, NULL, 0); // staking fiber
+				coro c;
+				c.coro = StakeMiner;
+				c.time = 0;
+				fiberGroup.push_back(c);
 			}
 #endif
 

@@ -4,9 +4,6 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <boost/algorithm/string.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/ip/v6_only.hpp>
-#include <boost/asio/ssl.hpp>
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>

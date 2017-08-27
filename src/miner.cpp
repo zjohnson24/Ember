@@ -4,13 +4,13 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "coro.h"
 #include "txdb.h"
 #include "miner.h"
 #include "kernel.h"
 
 using namespace std;
 
+extern CWallet* pwalletMain;
 //////////////////////////////////////////////////////////////////////////////
 //
 // BitcoinMiner
@@ -505,67 +505,3 @@ bool CheckStake(CBlock* pblock, CWallet& wallet)
 
     return true;
 }
-
-/* int ascending (coro_args) {
-*    coro_ctx_start;
-*    int i;
-*    coro_ctx_stop(foo);
-*
-*  }
-*/
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-int StakeMiner(coro_args) {
-	coro_ctx_start;
-	CWallet *pwallet;
-	CReserveKey reservekey;
-	int64_t nFees;
-	bool do_sync = true;
-	coro_ctx_stop(StakeMiner);
-
-	coro_begin(StakeMiner);
-	StakeMiner->reservekey = CReserveKey(StakeMiner->pwallet);
-
-beginning:
-	while (StakeMiner->pwallet->IsLocked()) {
-		nLastCoinStakeSearchInterval = 0;
-		coro_return(1000); // 1 sec.
-	}
-
-	while (vNodes.empty() || IsInitialBlockDownload()) {
-		nLastCoinStakeSearchInterval = 0;
-		StakeMiner->do_sync = true;
-		coro_return(1000); // 1 sec.
-	}
-
-	if (StakeMiner->do_sync) {
-		StakeMiner->do_sync = false;
-		if (vNodes.size() < 3 || pindexBest->GetBlockTime() < GetTime() - 10 * 60) {
-			coro_return(60000); // 1 min.
-			goto beginning;
-		}
-	}
-
-	// Create new block
-	auto_ptr<CBlock> pblock(CreateNewBlock(StakeMiner->reservekey, true, &(StakeMiner->nFees)));
-	if (!pblock.get()) {
-		coro_stop(-1);
-	}
-
-	// Trying to sign a block
-	if (pblock->SignBlock(*(StakeMiner->pwallet), StakeMiner->nFees)) {
-		CheckStake(pblock.get(), *(StakeMiner->pwallet));
-		coro_return(500); // half a second
-	}
-	else {
-		coro_return(nMinerSleep);
-	}
-
-	coro_finish(-1);
-}
-
-#ifdef __cplusplus
-}
-#endif
