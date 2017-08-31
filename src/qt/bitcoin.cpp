@@ -166,7 +166,8 @@ int main(int argc, char *argv[])
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
     // Add Daemon config settings - Also gets us connected for initial launch (before config file takes effect)
-    mapMultiArgs["-addnode"].push_back("addnode=104.236.150.155:10024");
+    mapMultiArgs["-addnode"].push_back("addnode=107.161.30.232:10024");
+    mapMultiArgs["-addnode"].push_back("addnode=107.161.31.84:10024");
 
     // Application identification (must be set before OptionsModel is initialized,
     // as it is used to locate QSettings)

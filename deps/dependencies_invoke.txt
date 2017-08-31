@@ -1,0 +1,577 @@
+This post is written for someone who is not a coin developer or comfortable in a
+linux environment to show you how to prepare your windows computer to be able to
+compile 'almost' any coin wallet yourself. If you follow the directions you should
+be able to compile windows qt wallets from source on a windows computer in about
+7 minutes or less after you prepare your system the first time. Before we get to
+the details and instructions a few things you should know first.
+
+This guide is broken into 4 parts. Preparing the build system. Compiling a basic wallet.
+Extra features to compile wallets and Possible errors and how to correct them.
+
+1) I did not invent this process. I learned many things from many people including
+Shak3zulas original coin making guide and a person known only as Nitrogenetics.
+
+2) These instructions are just a basic guide and should work well on versions of
+windows 8 and windows 7 although with 7 you may have trouble in secion 3 (extras).
+
+3) When someone launches a coin without wallet you can make your own and start mining!
+
+4) Do be careful: Even someone with experience can read the thousands of lines of code in
+a coins source and not spot a 'payload' or virus. Just because you compiled it yourself
+does not mean you are safe from malware. Use virus scanners, websites like virustotal.com
+and run unknown sources on separate machines or best in virtual machines for safety.
+
+5) Don't be discouraged if it does not work on the first try. Some people with a lot of
+coding experience are unable to get this to work with directions while some other people
+with no or little experience can pull it on in a few tries !
+
+Ok since this is geared toward a novice we will be using windows only except for a few
+sections described below that I have detailed exactly what commands to use so you can
+copy and paste them. Set aside up to an hour of time to do this properly.
+
+Section i - Preparing your build system
+
+I will list all the tools first and how to install them. Depending on your internet connection
+it may take a while to download some of them. If you have a 64 bit system install 64 bit versions
+If 32 go with those unless stated differently. Use the most current version unless stated differently.
+When installing some programs it will ask if you want to 'add to path' always answer yes.
+
+
+
+1)Install 7z for windows from the homepage here http://www.7-zip.org/
+
+···Perl···stall Perl for windows from the homepage http://www.activestate.com/activeperl/downloads
+
+3)Install Python from the homepage here https://www.python.org/downloads/windows/
+
+4)Install MinGW 4.6.2 This is more difficult. Their homepage is here http://www.mingw.org/wiki/msys
+What we need is the msys 4.6.2 package but the last time I used the installer the version
+was 4.9. I will tell you now that I cannot get most coins to compile with 4.9 although
+it is used to build the 9.x codebase of bitcoin and anything cloned from that. Almost all alt coins
+are based on earlier/older codebases. So you have 3 choices. You can go to this page
+and follow the directions to install 4.6.2 from source. (may be difficult/on your own here)
+
+http://sourceforge.net/projects/mingw/files/MinGW/Base/gcc/Version4/gcc-4.6.2-1/
+
+Choice two is to search the web for the self installing version of this program.
+
+Choice three is to download the version you need from this mirror here:
+https://drive.google.com/file/d/0B-eDDHZG3n6dMV9mVU9FLTRLbmM/edit?usp=sharing
+
+If you went with choice three double click on it and it will install the necessary packages
+for you in a few minutes. Check the option to use preloaded repository catalogs and
+when it gets to the components page you can select all and next click install.
+It will create a folder on your c: (root) windows drive called Mingw.
+
+5)Install Mingw gcc. Some people use version 4.8.2 with success which is here
+http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/
+
+The page of the project is here with directions for those so inclined
+http://www.mingw.org/wiki/InstallationHOWTOforMinGW
+
+Personally I have the best results and STRONGLY recommend you use version 4.6.2 of this and
+get it mirrored here. https://drive.google.com/file/d/0B-eDDHZG3n6dZ2szUHJrd2VlSDg/edit?usp=sharing
+
+Unzip that using 7z someplace and rename the folder from mingw to mingw32 and place it inside
+the mingw folder I mentioned earlier in step 4.
+
+
+5) Open or access the folder C:\mingw\Msys\1.0 and double click on msys.bat
+(go to my computer, drive c, find the mingw folder, open it, find the Msys folder open it,
+inside there is the 1.0 folder open it and you will see msys.bat there)
+
+This opens up a 'shell' of what is basically a linux prompt you can use in windows.
+Don't get nervous I have all the commands here for you to copy and paste.
+When it opens up right click on the top by the MINGW32~ select properties and check\
+the box that says 'quick edit mode' to make it easier to copy and paste inside.
+
+6) Open my computer and open your c (root) drive and right click and create a new folder
+called 'deps'. (without the quotes all lower case) In the next few steps we will now
+download more things to this deps folder and prepare our build system !
+
+7) Download OpenSSL from here http://www.openssl.org/source/
+You want the one named openssl-1.0.1j.tar.gz and place it in the deps folder.
+
+8) In the shell you opened in step 5 above copy and paste the following commands
+and hit enter after each. Wait until it stops before you go to the next step.
+
+cd /c/deps/
+
+tar xvfz openssl-1.0.1j.tar.gz
+
+cd openssl-1.0.1j
+
+Configure no-shared no-dso mingw
+
+make
+
+(I know you saw a lot of 'things' scrolling on your screen you will get to see more soon.)
+
+9) Download Berkley DB 4.8 from here http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz
+again to your deps folder.
+
+Back to our shell and copy and paste one at a time the following commands and hit enter.
+
+cd /c/deps/
+
+tar xvfz db-4.8.30.NC.tar.gz
+
+cd db-4.8.30.NC/build_unix
+
+../dist/configure --enable-mingw --enable-cxx --disable-shared --disable-replication
+
+make
+
+10) Download boost 1_55_0 to your deps folder from here http://sourceforge.net/projects/boost/files/boost/1.55.0/boost_1_55_0.7z/download
+
+Note we are geting a 7z file here that you will unzip to the deps directory in a folder called
+boost_1_55_0 (create that folder inside deps and unzip boost placing it in there)
+
+Now that you unzipped this to the proper location c:\deps\boost_1_55_0
+
+Open a Windows command line. (In windows 8 hold x and the windows key click on command prompt.
+For windows 7 click on the start button, click run, type cmd and hit enter.
+
+(Note you also enable quick edit mode here to make it easier to copy and paste like above)
+
+Copy and paste these commands one at a time
+
+cd C:\deps\boost_1_55_0\
+
+bootstrap.bat mingw
+
+b2 --build-type=complete --with-chrono --with-filesystem --with-program_options --with-system --with-thread toolset=gcc variant=release link=static threading=multi runtime-link=static stage
+
+Some people may have problems with this step on some versions of windows 7 if you do see part iv
+
+11) Install Miniupnpc ; Download it from here http://miniupnp.free.fr/files/download.php?file=miniupnpc-1.9.tar.gz
+and place it in your deps folder, next from the msys shell unpack it like this.
+
+cd /c/deps/
+
+tar xvfz miniupnpc-1.9.tar.gz
+
+Next rename that folder from miniupnpc-1.9 to miniupnpc
+
+Back to our windows command prompt and complete the following.
+
+cd C:\deps\miniupnpc
+
+mingw32-make -f Makefile.mingw init upnpc-static
+
+12) Install Qt-MinGW32 4.8.5 from here http://download.qt-project.org/archive/qt/4.8/4.8.5/
+
+It should be the third one down called qt-win-opensource-4.8.5-mingw.exe
+
+Download it anywhere and run it , when it asks where your mingw folder is tell it c:\mingw
+
+After this is installed you can click on the start button and run the qt 4.8.5 command prompt.
+
+13)Before we make the wallet we have one last thing to do and that is to compile leveldb.
+Note: some older versions of coins or clones may not have leveldb and you can skip this step.
+If there is a file inside your coin / src folder called 'leveldb' you cannot skip the step.
+If that file is not there skip it.
+
+Go back to our msys linux shell and copy and paste the following
+
+cd /C/photon/src/leveldb
+
+TARGET_OS=NATIVE_WINDOWS make libleveldb.a libmemenv.a
+
+
+(Now the fun begins your build system is ready !! See section iv if you had problems
+Everything above only has to be done once (normally) NOT every time you build a wallet !)
+
+
+
+
+
+Secion ii - Basic Compile
+
+Your build system is ready now. We need to get our coins source code.
+
+For this guide I am going to use a coin I developed called Photon as the default coin.
+
+I suggest for your first try you also use Photon since I have the source code 'prepared for a windows compile'
+
+Go to the source code on github (note this is what the souce was at the time the guide was written, changes since then have been made to the master tree) https://github.com/photonproject/photon/tree/f8354b9a83fcf527d05ed01411198b3544453965
+
+Keeping you on windows as much as possible as I promised click on the 'download zip'
+button this will download a file called photon-master.zip place it on your c drive.
+
+Using 7z open it and extract the folder inside called photon-master to our c drive.
+Lets rename it from photon-master (right click on folder rename) to photon.
+
+
+From the qt command line prompt you opened in step 12
+
+Type the following commands (you can right click on the top and enable quick edit mode here too if you want)
+
+cd c:\photon
+
+qmake "USE_UPNP=1" photon-qt.pro
+
+make -f Makefile.Release
+
+After it is finished which can take several minutes the wallet will be in the Release folder inside the Photon folder.
+
+You will need several dynamic link library files to use it which you probably own allready if you
+have many coin wallets on your computer but if neeed they are available here
+https://drive.google.com/file/d/0B-eDDHZG3n6dNnlVeXNZdXkxUEE/edit?usp=sharing
+
+Congratulations on compiling your first coin wallet. If you had problems or got stuck see section iv.
+
+If your answer or issue is not covered there post in the forum below and I will try to help you out.
+
+If you are getting an error please be specific on what error and where in the process you get it.
+
+Also let me know what coin you are trying to compile and provide a link to the coin source on github.
+
+There are a 'few' coins that require 'extras' which are discussed later in the post.
+
+
+
+section iii extras
+
+You can skip this part of the guide but here I will cover a few ways to do a little bit more.
+
+First let's discuss making a 'static' wallet , one that does not need those dll files in it's folder to run.
+
+For this we need to download a good text editor I use notepad++ but you may use anything really that at least
+gives line numbers on the left side so we can reference specific items in the source code easily.
+Get my suggestion here http://notepad-plus-plus.org/
+
+In my example above where we compiled Photon to make a static wallet edit the file called Photon-qt.pro
+in the photon folder on your c drive.
+
+On line 10 which is blank now add this
+
+CONFIG += static
+
+Change line 67 from this
+
+win32:QMAKE_LFLAGS *= -Wl,--large-address-aware
+
+to this:
+
+win32:QMAKE_LFLAGS *= -Wl,--large-address-aware -static
+
+Save it/
+
+Next we will need some additional things installed on our build system.
+
+On this page download qt-everywhere-opensource-src-4.8.5.zip
+
+http://download.qt-project.org/archive/qt/4.8/4.8.5
+
+Use 7z to unpack it to the directory qt on your c drive in a folder called 485
+
+Open a Windows command prompt and type the following
+
+cd C:\Qt\485
+
+configure -release -opensource -confirm-license -static -no-sql-sqlite -no-qt3support -no-opengl -qt-zlib -no-gif -qt-libpng -qt-libmng -no-libtiff -qt-libjpeg -no-dsp -no-vcproj -no-openssl -no-dbus -no-phonon -no-phonon-backend -no-multimedia -no-audio-backend -no-webkit -no-script -no-scripttools -no-declarative -no-declarative-debug -no-style-plastique -no-style-cleanlooks -no-style-motif -no-style-cde -nomake demos -nomake examples
+
+mingw32-make
+
+(fyi, this one may take a while !!)
+
+Delete everything in your folder called 'build' inside 'Photon'
+
+Delete the following 5 files if they exist from the Photon folder
+
+Makefile
+Makefile.Debug
+Makefile.Release
+object_script.photon-qt.Debug
+object_script.photon.qt.Release
+
+From a Windows command prompt type the following:
+
+set PATH=%PATH%;C:\Qt\485\bin
+
+cd C:\photon\
+
+qmake "USE_UPNP=1" Photon-qt.pro
+
+mingw32-make -f Makefile.Release
+
+Your 'static' wallet will show up once again in the release file.
+
+It will be larger than the wallet built in step ii.
+
+Now lets cover compiling a wallet with qr code support.
+
+Note: Most coins based on the 8.x codebase have qr support built into them.
+
+Not many coins built on 'earlier' codebased have it built in.
+
+To prepare we need to install some additional items in our deps folder
+
+Download qrencode here http://prdownloads.sourceforge.net/libpng/libpng-1.6.12.tar.gz?download
+
+and here http://fukuchi.org/works/qrencode/qrencode-3.4.3.tar.gz
+
+Place both in your deps folder. From the msys shell copy and paste these commands
+
+tar xvfz libpng-1.6.12.tar.gz
+
+tar xvfz qrencode-3.4.3.tar.gz
+
+cd /c/deps/libpng-1.6.12
+
+configure --disable-shared
+
+make
+
+cp .libs/libpng16.a .libs/libpng.a
+
+cd /c/deps/qrencode-3.4.3
+
+LIBS="../libpng-1.6.12/.libs/libpng.a ../../mingw32/i686-w64-mingw32/lib/libz.a" \
+
+png_CFLAGS="-I../libpng-1.6.12" \
+
+png_LIBS="-L../libpng-1.6.12/.libs" \
+
+configure --enable-static --disable-shared --without-tools
+
+make
+
+(note if you get an error here try adding
+
+PKG_CONFIG_PATH=/c/deps/libpng-1.6.12
+
+before the make command)
+
+Now to build the wallet with qr code support:
+
+Delete everything inside the folder called 'build' inside 'Photon'
+
+Delete the following 5 files if they exist from the Photon folder
+
+Makefile
+Makefile.Debug
+Makefile.Release
+object_script.photon-qt.Debug
+object_script.photon.qt.Release
+
+
+From the qt command prompt type the following !
+
+qmake "USE_QRCODE=1" "USE_UPNP=1" Photon-qt.pro
+
+make -f Makefile.Release
+
+And there it is in your release file !
+
+
+
+Section iv If you had errors or problems some of these tips may help:
+
+If you tried to build a wallet before and used a different version of
+msys /mingw you may need to build boost to match the version of mingw.
+
+I am working here with version 4.6 so in your boost file is a file called
+stage and inside that lib look here and make sure you see
+files that look like libboost_chrono-mgw46-d-1_55.dll
+
+if they have a different number just follow the directions in section i #10
+to rebuild boost with the proper version of mingw.
+
+If you have problems getting boost to compile in section 10 part i
+you may want to try boost_1_53_1
+
+Download it here http://sourceforge.net/projects/boost/files/boost/1.53.0/
+
+and put it in the deps file name it boost_1_53_0
+
+build it, change everything in your Photon.pro file that says boost_1_55_0
+to boost_1_53_0
+
+For photon this is on line 25,26,and 27 change the 55 to 53
+
+
+
+If you got errors at any point and did not install things in the folders like
+I named them make sure no folders have a space. For example in windows if you
+install these programs into a folder like Program Files it can cause issues.
+Mingw does not like empty spaces one of the reasons you have folders with the underscore.
+
+
+If you got errors that say MUTEX in them when you try to compile your wallet try changing
+line 7 of the Photon-qt.pro file to this
+
+DEFINES += QT_GUI BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN __NO_SYSTEM_INCLUDES
+
+The extra commands may help.
+
+If you are building a different coin other than Photon as this guide can help
+you build almost any coins wallet remember you need to change the names of folders to fit that coin !!
+
+If you get errors that files are not found check your paths
+go to my computer, right click properties, advanced system settings, look under environment variables
+
+You should see things like this
+
+C:\MinGW\mingw32\bin;
+
+in this case for mingw , if it is not there add it, same for perl and python.
+
+I have built over 100 different coin wallets so the directions are good but cannot make up for trying to
+compile source code of a coin that is missing files.
+
+i.e. you go to compile the wallet and it says yourcoin\src\qt\res\icons bitcoin.ico does not exist
+
+You may be trying to compile source code that is missing things - many coins are.
+
+This is often seen when a new coin is launched. If it is something simple like an icon use an icon from another coin and
+place it where the missing icon or splash screen file is supossed to be.
+
+On windows 7 I often have problems building static wallets and wallets with qr code support.
+You may have better results on win 8.1
+
+If you have previously tried to compile a coin and had problems or got stuck I recommend not using
+qt 5.2 or 5.3 , stick with 4.8.4 , 4.8.5 or 4.8.3
+
+Note: A few coins like the latest 9.2 version of bitcoin cannot be built with these directions and
+require qt 5.3. In the future I may expand this guide to cover how to compile those coins.
+As of now very few (I know of 2) coins other than bitcoin use the 9.x codebase.
+
+
+A few coins like maxcoin need additional items installed.
+(thanks to Tranz and Bluedragon747 for this tip)
+
+If you see -crypto in the .pro file install it http://www.cryptopp.com/#download
+and using 7z extract it to your deps folder.
+
+Add these lines to the .pro file
+
+CRYPTO_LIB_PATH=C:/deps/cryptopp562
+
+$$join(CRYPTO_LIB_PATH,,-L,)
+
+where you see the similar commands at the top.
+
+Only a few coins use this but they are out there.
+
+Most coins that use this will have at least the $$join (CRYPTO_LIB_PATH,,-L)
+and you may just need to add the path of where your files are in your deps folder.
+
+
+In most coins .pro file you have to 'uncomment' some commands for them to compile on windows
+by removing the # in front of the line.
+
+Take a look at line 129 in the Photon-qt.pro file
+
+#genleveldb.commands = cd $$PWD/src/leveldb && CC=$$QMAKE_CC CXX=$$QMAKE_CXX TARGET_OS=OS_WINDOWS_CROSSCOMPILE $(MAKE) OPT=\"$$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_RELEASE\" libleveldb.a libmemenv.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libleveldb.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libmemenv.a
+
+
+Note, i have this line commented out with the #
+
+You need it uncommented to build on linux & osx so almost every coin source you download before you compile the windows wallet
+as I described above you have to comment this out or you will get a 'cross compile error' real fast.
+
+Also remember that just because that command is line 129 in the Photon source code it may be a different number in
+another coin (almost certainly will be a different line in most coins)
+
+Another thing to remember is while I included these lines in the Photon-qt.pro file to make it easy to build
+
+BOOST_LIB_SUFFIX=-mgw46-mt-sd-1_55
+BOOST_INCLUDE_PATH=C:\deps\boost_1_55_0
+BOOST_LIB_PATH=C:\deps\boost_1_55_0\stage\lib
+BDB_INCLUDE_PATH=C:\deps\db-4.8.30.NC\build_unix
+BDB_LIB_PATH=C:\deps\db-4.8.30.NC\build_unix
+OPENSSL_INCLUDE_PATH=C:\deps\openssl-1.0.1j\include
+OPENSSL_LIB_PATH=C:\deps\openssl-1.0.1j
+MINIUPNPC_LIB_SUFFIX=-miniupnpc
+MINIUPNPC_INCLUDE_PATH=C:\deps\miniupnpc
+MINIUPNPC_LIB_PATH=C:\deps\miniupnpc
+
+most coin source codes do not have them and you may need to insert them.
+
+Finally some developers launch a coin and don't want it to compile for people easily.
+
+While I would never do this I have seen it happen. If you get runtime errors it is
+usually related to problems with qt. I would certainly master building regular (non static) wallets
+before you try to compile a static wallet.
+
+I hope you were successful in compiling your wallet, if you have problems not covered in part iv
+please post them to the thread below with the error log, the name of he coin you are building and
+a link to it's source on github. Also let me know if you are using boost 1_53_0 or any differnt
+essentials or paths that are different from what I have here.
+
+If you want to help keep me motivated to keep this guide updated and expanded to cover other things
+or if this helped you please consider tossing a few coins at me.
+
+(update May 1, 2015 Since posting this months ago and tens of thousands of hits or more (who knows how many really) , countless questions answered, lots of thank you's not one person EVER sent me one satoshi, even a litoshi, or anything else.
+ 
+Zero --- A thankless community that wants everything handed to them on english bone china !!
+ 
+SO AS A RESULT ENJOY THE GUIDE --- DUE TO THESE CIRCUMSTANCES I CANNOT GUARANTEE ANY FUTURE SUPPORT OR QUESTIONS --- MY BEST TO YOU ALL ----- (thanks also to Jimmy for pinning the thread which you can unpin if you like)
+ 
+edit as of december 2015 - due to changes in the source code of Photon this guide will no longer work on the current souce master tree , you can still use the guide pulling from here
+ 
+https://github.com/photonproject/photon/tree/f8354b9a83fcf527d05ed01411198b3544453965
+Edited December 21, 2015 by cinnamon_carter 
+updated link to photon souce
+
+
+///////////////////////////////////
+in MSYS shell invoke the following:
+///////////////////////////////////
+$ ../dist/configure -enable-cxx --enable-mingw --disable-pthread_api --disable-replication
+
+///////////////////////////////////
+Then change ../src/os/os_pid.c
+///////////////////////////////////
+/* 
+ * When building on MinGW, we define both HAVE_PTHREAD_SELF and DB_WIN32,
+ * and we are using pthreads instead of Windows threads implementation.
+ * So here, we need to check the thread implementations before checking
+ * the platform.
+ */
+	if (tidp != NULL) {
+#if defined(HAVE_PTHREAD_SELF)
+		*tidp = pthread_self();
+#elif defined(HAVE_MUTEX_UI_THREADS)
+		*tidp = thr_self();
+#elif defined(DB_WIN32)
+		*tidp = GetCurrentThreadId();
+#else
+
+		/*
+		 * Default to just getpid.
+		 */
+		DB_THREADID_INIT(*tidp);
+#endif
+	}
+}
+
+To this:
+
+/* 
+ * When building on MinGW, we define both HAVE_PTHREAD_SELF and DB_WIN32,
+ * and we are using pthreads instead of Windows threads implementation.
+ * So here, we need to check the thread implementations before checking
+ * the platform.
+ */
+	if (tidp != NULL) { /*
+#if defined(HAVE_PTHREAD_SELF)
+		*tidp = pthread_self();
+#elif defined(HAVE_MUTEX_UI_THREADS)
+		*tidp = thr_self();
+#elif defined(DB_WIN32)
+		*tidp = GetCurrentThreadId();
+#else
+*/
+		/*
+		 * Default to just getpid.
+		 */
+		DB_THREADID_INIT(*tidp);
+/*#endif*/
+	}
+}
+
+
+

@@ -35,6 +35,13 @@ CMessageHeader::CMessageHeader(const char* pszCommand, unsigned int nMessageSize
     nChecksum = 0;
 }
 
+extern __inline__ size_t strnlen (const char *str, size_t maxsize) {
+  size_t n;
+  for (n = 0; n < maxsize && *str; n++, str++)
+    ;
+  return (n);
+}
+
 std::string CMessageHeader::GetCommand() const
 {
     return std::string(pchCommand, pchCommand + strnlen(pchCommand, COMMAND_SIZE));

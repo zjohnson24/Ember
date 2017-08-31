@@ -58,19 +58,19 @@ public:
         bnProofOfWorkLimit = CBigNum(~uint256(0) >> 20);
         bnProofOfStakeLimit = CBigNum(~uint256(0) >> 20);
 
-        const char* pszTimestamp = "Australian Government Considers Blockchain Tech for Land Transport, by: Kevin Helms - October 15, 2016"; // Saturday, 15-Oct-16 12:00:00 UTC 
+        const char* pszTimestamp = "Australian Government Considers Blockchain Tech for Land Transport, by: Kevin Helms - October 15, 2016"; // Saturday, 15-Oct-16 12:00:00 UTC
         std::vector<CTxIn> vin;
         vin.resize(1);
         vin[0].scriptSig = CScript() << 0 << CBigNum(42) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
         std::vector<CTxOut> vout;
         vout.resize(1);
         vout[0].SetEmpty();
-        CTransaction txNew(1, 1476532800, vin, vout, 0); // Saturday, 15-Oct-16 12:00:00 UTC 
+        CTransaction txNew(1, 1476532800, vin, vout, 0); // Saturday, 15-Oct-16 12:00:00 UTC
         genesis.vtx.push_back(txNew);
         genesis.hashPrevBlock = 0;
         genesis.hashMerkleRoot = genesis.BuildMerkleTree();
         genesis.nVersion = 1;
-        genesis.nTime    = 1476532800; // Saturday, 15-Oct-16 12:00:00 UTC 
+        genesis.nTime    = 1476532800; // Saturday, 15-Oct-16 12:00:00 UTC
         genesis.nBits    = bnProofOfWorkLimit.GetCompact();
         genesis.nNonce   = 180782;
 
@@ -86,6 +86,9 @@ public:
         hashGenesisBlock = genesis.GetHash();
         assert(hashGenesisBlock == uint256("0x00000ff60784c4c8ceed0866d00de5742529ef3f1911e245f4126c5c293c88cd"));
         assert(genesis.hashMerkleRoot == uint256("0xb6602abe6f7422a367781fe8a1a8d8536a286c956b4db296066f9c486a93e25d"));
+
+        vSeeds.push_back(CDNSSeedData("emb_00.0xify.com", "emb_00.0xify.com")); // Underscore FreeBSD Server
+        vSeeds.push_back(CDNSSeedData("emb_01.0xify.com", "emb_01.0xify.com")); // Underscore Debian Server
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,92);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,110);

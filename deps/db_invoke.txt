@@ -1,0 +1,56 @@
+///////////////////////////////////
+in MSYS shell invoke the following:
+///////////////////////////////////
+$ ../dist/configure -enable-cxx --enable-mingw --disable-pthread_api --disable-replication
+
+///////////////////////////////////
+Then change ../src/os/os_pid.c
+///////////////////////////////////
+/* 
+ * When building on MinGW, we define both HAVE_PTHREAD_SELF and DB_WIN32,
+ * and we are using pthreads instead of Windows threads implementation.
+ * So here, we need to check the thread implementations before checking
+ * the platform.
+ */
+	if (tidp != NULL) {
+#if defined(HAVE_PTHREAD_SELF)
+		*tidp = pthread_self();
+#elif defined(HAVE_MUTEX_UI_THREADS)
+		*tidp = thr_self();
+#elif defined(DB_WIN32)
+		*tidp = GetCurrentThreadId();
+#else
+
+		/*
+		 * Default to just getpid.
+		 */
+		DB_THREADID_INIT(*tidp);
+#endif
+	}
+}
+
+To this:
+
+/* 
+ * When building on MinGW, we define both HAVE_PTHREAD_SELF and DB_WIN32,
+ * and we are using pthreads instead of Windows threads implementation.
+ * So here, we need to check the thread implementations before checking
+ * the platform.
+ */
+	if (tidp != NULL) { /*
+#if defined(HAVE_PTHREAD_SELF)
+		*tidp = pthread_self();
+#elif defined(HAVE_MUTEX_UI_THREADS)
+		*tidp = thr_self();
+#elif defined(DB_WIN32)
+		*tidp = GetCurrentThreadId();
+#else
+*/
+		/*
+		 * Default to just getpid.
+		 */
+		DB_THREADID_INIT(*tidp);
+/*#endif*/
+	}
+}
+
