@@ -17,7 +17,6 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 }
 
 win32{
-BOOST_LIB_SUFFIX=-mgw46-mt-s-1_55
 OPENSSL_INCLUDE_PATH=E:/projects/EmberOld/deps/openssl-1.0.2l/include
 MINIUPNPC_INCLUDE_PATH=E:/projects/EmberOld/deps
 MINIUPNPC_LIB_PATH=E:/projects/EmberOld/deps/miniupnpc
@@ -25,9 +24,9 @@ QRENCODE_INCLUDE_PATH=C:/deps/qrencode-3.4.4
 QRENCODE_LIB_PATH=C:/deps/qrencode-3.4.4/.libs
 }
 
-OBJECTS_DIR = build
-MOC_DIR = build
-UI_DIR = build
+OBJECTS_DIR = E:/projects/EmberOld/build
+MOC_DIR = E:/projects/EmberOld/build
+UI_DIR = E:/projects/EmberOld/build
 
 LIBS += -Wl,-Bstatic
 QMAKE_LFLAGS *= -static
@@ -37,8 +36,8 @@ macx:QMAKE_CXXFLAGS += -mmacosx-version-min=10.7 -arch x86_64 -isysroot /Applica
 
 !win32 {
 # for extra security against potential buffer overflows: enable GCCs Stack Smashing Protection
-QMAKE_CXXFLAGS *= -fstack-protector-all --param ssp-buffer-size=1
-QMAKE_LFLAGS *= -fstack-protector-all --param ssp-buffer-size=1 -static
+QMAKE_CXXFLAGS *= -march=i686 -fstack-protector-all --param ssp-buffer-size=1 -fno-tree-vectorize
+QMAKE_LFLAGS *= -march=i686 -fstack-protector-all --param ssp-buffer-size=1 -fno-tree-vectorize -static
 # We need to exclude this for Windows cross compile with MinGW 4.2.x, as it will result in a non-working executable!
 # This can be enabled for Windows, when we switch to MinGW >= 4.4.x.
 }
@@ -120,7 +119,7 @@ SOURCES += src/txdb-leveldb.cpp \
     }
     LIBS += -lshlwapi
     # Disable if building on Windows
-    # genleveldb.commands = cd $$PWD/src/leveldb && CC=$$QMAKE_CC CXX=$$QMAKE_CXX TARGET_OS=OS_WINDOWS_CROSSCOMPILE $(MAKE) OPT=\"$$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_RELEASE\" libleveldb.a libmemenv.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libleveldb.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libmemenv.a
+    #genleveldb.commands = cd $$PWD/src/leveldb && CC=$$QMAKE_CC CXX=$$QMAKE_CXX TARGET_OS=OS_WINDOWS_CROSSCOMPILE $(MAKE) OPT=\"$$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_RELEASE\" libleveldb.a libmemenv.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libleveldb.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libmemenv.a
 }
 genleveldb.target = $$PWD/src/leveldb/libleveldb.a
 genleveldb.depends = FORCE
@@ -155,7 +154,7 @@ contains(USE_O3, 1) {
     QMAKE_CFLAGS += -msse2
 }
 
-QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wno-ignored-qualifiers -Wformat -Wformat-security -Wno-unused-parameter -Wstack-protector
+QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wno-ignored-qualifiers -Wformat -Wformat-security -Wno-unused-parameter -Wstack-protector -Wno-deprecated-declarations -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-but-set-variable
 
 # Input
 DEPENDPATH += src src/json src/qt
@@ -179,6 +178,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/chainparamsseeds.h \
     src/checkpoints.h \
     src/compat.h \
+    src/get_exe_path.h \
     src/coincontrol.h \
     src/sync.h \
     src/util.h \
@@ -200,6 +200,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/script.h \
     src/init.h \
     src/mruset.h \
+    src/irc.h \
     src/json/json_spirit_writer_template.h \
     src/json/json_spirit_writer.h \
     src/json/json_spirit_value.h \
@@ -219,6 +220,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/qt/transactiondesc.h \
     src/qt/transactiondescdialog.h \
     src/qt/bitcoinamountfield.h \
+    src/qt/updater.h \
     src/wallet.h \
     src/keystore.h \
     src/qt/transactionfilterproxy.h \
@@ -280,6 +282,7 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/chainparams.cpp \
     src/version.cpp \
     src/sync.cpp \
+    src/get_exe_path.cpp \
     src/txmempool.cpp \
     src/util.cpp \
     src/hash.cpp \
@@ -295,6 +298,7 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/addrman.cpp \
     src/db.cpp \
     src/walletdb.cpp \
+    src/irc.cpp \
     src/qt/clientmodel.cpp \
     src/qt/guiutil.cpp \
     src/qt/transactionrecord.cpp \
@@ -310,6 +314,7 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/transactionfilterproxy.cpp \
     src/qt/transactionview.cpp \
     src/qt/walletmodel.cpp \
+    src/qt/updater.cpp \
     src/rpcclient.cpp \
     src/rpcprotocol.cpp \
     src/rpcserver.cpp \
@@ -428,28 +433,25 @@ macx:QMAKE_CXXFLAGS_THREAD += -pthread
 macx:QMAKE_INFO_PLIST = share/qt/Info.plis
 
 # Set libraries and includes at end, to use platform-defined defaults if not overridden
-INCLUDEPATH += E:/MinGW/include
-INCLUDEPATH += E:/Qt_4.8.5/include
-INCLUDEPATH += ./inc/boost_1_55_0
-INCLUDEPATH += ./inc/db-6.1.26
-INCLUDEPATH += ./inc/openssl-1.0.2l
+#INCLUDEPATH += E:/Qt5_9_1/Tools/mingw530_32/include
+INCLUDEPATH += E:/Qt5_9_1/5.9.1/mingw53_32/include
+INCLUDEPATH += E:/projects/EmberOld/inc/boost_1_55_0
+INCLUDEPATH += E:/projects/EmberOld/inc/db-6.1.26
+INCLUDEPATH += E:/projects/EmberOld/inc/openssl-1.0.2l
 INCLUDEPATH += $$QRENCODE_INCLUDE_PATH
-LIBS += -L./libs
-LIBS += -LE:/MinGW/lib
-LIBS += -LE:/Qt_4.8.5/lib
+LIBS += -LE:/projects/EmberOld/libs
+#LIBS += -LE:/Qt5_9_1/Tools/mingw530_32/lib
+LIBS += -LE:/Qt5_9_1/5.9.1/mingw53_32/lib
 LIBS += $$join(QRENCODE_LIB_PATH,,-L,)
-LIBS += -lQtWebKit
-LIBS += -lJavaScriptCore
-LIBS += -lWebCore
 LIBS += -lssl
 LIBS += -lcrypto
 LIBS += -ldb_cxx$$BDB_LIB_SUFFIX
 # -lgdi32 has to happen after -lcrypto (see  #681)
-LIBS += -lboost_system$$BOOST_LIB_SUFFIX
-LIBS += -lboost_filesystem$$BOOST_LIB_SUFFIX
-LIBS += -lboost_program_options$$BOOST_LIB_SUFFIX
-LIBS += -lboost_thread$$BOOST_LIB_SUFFIX
-windows:LIBS += -lboost_chrono$$BOOST_LIB_SUFFIX
+LIBS += -lboost_system-mgw53-mt-1_55
+LIBS += -lboost_filesystem-mgw53-1_55
+LIBS += -lboost_program_options-mgw53-1_55
+LIBS += -lboost_thread-mgw53-mt-1_55
+windows:LIBS += -lboost_chrono-mgw53-1_55
 windows:LIBS += -lws2_32 -lshlwapi -lmswsock -lole32 -loleaut32 -luuid -lgdi32
 
 contains(RELEASE, 1) {
