@@ -123,40 +123,40 @@ public:
  */
 
 // total number of buckets for tried addresses
-#define ADDRMAN_TRIED_BUCKET_COUNT 256
+#define ADDRMAN_TRIED_BUCKET_COUNT 4098
 
 // total number of buckets for new addresses
-#define ADDRMAN_NEW_BUCKET_COUNT 1024
+#define ADDRMAN_NEW_BUCKET_COUNT 4098
 
 // maximum allowed number of entries in buckets for new and tried addresses
-#define ADDRMAN_BUCKET_SIZE 64
+#define ADDRMAN_BUCKET_SIZE 8196
 
 // over how many buckets entries with tried addresses from a single group (/16 for IPv4) are spread
-#define ADDRMAN_TRIED_BUCKETS_PER_GROUP 8
+#define ADDRMAN_TRIED_BUCKETS_PER_GROUP 32
 
 // over how many buckets entries with new addresses originating from a single group are spread
 #define ADDRMAN_NEW_BUCKETS_PER_SOURCE_GROUP 64
 
 // in how many buckets for entries with new addresses a single address may occur
-#define ADDRMAN_NEW_BUCKETS_PER_ADDRESS 8
+#define ADDRMAN_NEW_BUCKETS_PER_ADDRESS 32
 
 // how old addresses can maximally be
-#define ADDRMAN_HORIZON_DAYS 30
+#define ADDRMAN_HORIZON_DAYS 31
 
 // after how many failed attempts we give up on a new node
-#define ADDRMAN_RETRIES 3
+#define ADDRMAN_RETRIES 16
 
 // how many successive failures are allowed ...
-#define ADDRMAN_MAX_FAILURES 10
+#define ADDRMAN_MAX_FAILURES 32
 
 // ... in at least this many days
 #define ADDRMAN_MIN_FAIL_DAYS 7
 
 // the maximum percentage of nodes to return in a getaddr call
-#define ADDRMAN_GETADDR_MAX_PCT 23
+#define ADDRMAN_GETADDR_MAX_PCT 50
 
 // the maximum number of nodes to return in a getaddr call
-#define ADDRMAN_GETADDR_MAX 2500
+#define ADDRMAN_GETADDR_MAX 2048
 
 /** Stochastical (IP) address manager */
 class CAddrMan

@@ -74,14 +74,12 @@ static CSemaphore *semOutbound = NULL;
 static CNodeSignals g_signals;
 CNodeSignals& GetNodeSignals() { return g_signals; }
 
-void AddOneShot(string strDest)
-{
+void AddOneShot(string strDest) {
     LOCK(cs_vOneShots);
     vOneShots.push_back(strDest);
 }
 
-unsigned short GetListenPort()
-{
+unsigned short GetListenPort() {
     return (unsigned short)(GetArg("-port", Params().GetDefaultPort()));
 }
 
@@ -221,8 +219,7 @@ void SetReachable(enum Network net, bool fFlag)
 }
 
 // learn a new local address
-bool AddLocal(const CService& addr, int nScore)
-{
+bool AddLocal(const CService& addr, int nScore) {
     if (!addr.IsRoutable())
         return false;
 
@@ -248,8 +245,7 @@ bool AddLocal(const CService& addr, int nScore)
     return true;
 }
 
-bool AddLocal(const CNetAddr &addr, int nScore)
-{
+bool AddLocal(const CNetAddr &addr, int nScore) {
     return AddLocal(CService(addr, GetListenPort()), nScore);
 }
 
@@ -779,17 +775,13 @@ void ThreadSocketHandler()
                 if (nErr != WSAEWOULDBLOCK)
                     LogPrintf("socket error accept failed: %d\n", nErr);
             }
-            else if (nInbound >= GetArg("-maxconnections", 128) - MAX_OUTBOUND_CONNECTIONS)
+            else if (nInbound >= GetArg("-maxconnections", 255) - MAX_OUTBOUND_CONNECTIONS)
             {
                 closesocket(hSocket);
-            }
-            else if (CNode::IsBanned(addr))
-            {
+            } else if (CNode::IsBanned(addr)) {
                 LogPrintf("connection from %s dropped (banned)\n", addr.ToString());
                 closesocket(hSocket);
-            }
-            else
-            {
+            } else {
                 LogPrint("net", "accepted connection %s\n", addr.ToString());
                 CNode* pnode = new CNode(hSocket, addr, "", true);
                 pnode->AddRef();
@@ -1099,20 +1091,19 @@ void ThreadOpenConnections()
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++)
                 {
-                    MilliSleep(500);
+                    MilliSleep(50);
                 }
             }
-            MilliSleep(500);
+            MilliSleep(50);
         }
     }
 
     // Initiate network connections
     int64_t nStart = GetTime();
-    while (true)
-    {
+    while (true) {
         ProcessOneShot();
 
-        MilliSleep(500);
+        MilliSleep(10);
 
         CSemaphoreGrant grant(*semOutbound);
         boost::this_thread::interruption_point();
@@ -1149,38 +1140,42 @@ void ThreadOpenConnections()
         int64_t nANow = GetAdjustedTime();
 
         int nTries = 0;
-        while (true)
-        {
+        while (true) {
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr))
                 break;
 
-            // If we didn't find an appropriate destination after trying 100 addresses fetched from addrman,
+            // If we didn't find an appropriate destination after trying 512 addresses fetched from addrman,
             // stop this loop, and let the outer loop run again (which sleeps, adds seed nodes, recalculates
             // already-connected network ranges, ...) before trying new addrman addresses.
             nTries++;
-            if (nTries > 100)
+            if (nTries > 512) {
                 break;
+            }
 
-            if (IsLimited(addr))
+            if (IsLimited(addr)) {
                 continue;
+            }
 
             // only consider very recently tried nodes after 30 failed attempts
-            if (nANow - addr.nLastTry < 600 && nTries < 30)
+            if (nANow - addr.nLastTry < 600 && nTries < 30) {
                 continue;
+            }
 
             // do not allow non-default ports, unless after 50 invalid addresses selected already
-            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50)
+            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50) {
                 continue;
+            }
 
             addrConnect = addr;
             break;
         }
 
-        if (addrConnect.IsValid())
+        if (addrConnect.IsValid()) {
             OpenNetworkConnection(addrConnect, &grant);
+        }
     }
 }
 

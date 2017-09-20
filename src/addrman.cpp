@@ -30,7 +30,7 @@ int CAddrInfo::GetBucketPosition(const uint256 &nKey, bool fNew, int nBucket) co
 
 bool CAddrInfo::IsTerrible(int64_t nNow) const
 {
-    if (nLastTry && nLastTry >= nNow-60) // never remove things tried the last minute
+    if (nLastTry && nLastTry >= nNow-(60*5)) // never remove things tried the last 5 minutes
         return false;
 
     if (nTime > nNow + 10*60) // came in a flying DeLorean
@@ -246,8 +246,7 @@ bool CAddrMan::Add_(const CAddress &addr, const CNetAddr& source, int64_t nTimeP
     int nId;
     CAddrInfo *pinfo = Find(addr, &nId);
 
-    if (pinfo)
-    {
+    if (pinfo) {
         // periodically update nTime
         bool fCurrentlyOnline = (GetAdjustedTime() - addr.nTime < 24 * 60 * 60);
         int64_t nUpdateInterval = (fCurrentlyOnline ? 60 * 60 : 24 * 60 * 60);

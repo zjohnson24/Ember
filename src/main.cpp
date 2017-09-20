@@ -905,8 +905,7 @@ bool CBlock::ReadFromDisk(const CBlockIndex* pindex, bool fReadTransactions)
     return true;
 }
 
-uint256 static GetOrphanRoot(const uint256& hash)
-{
+uint256 static GetOrphanRoot(const uint256& hash) {
     map<uint256, COrphanBlock*>::iterator it = mapOrphanBlocks.find(hash);
     if (it == mapOrphanBlocks.end())
         return hash;
@@ -921,8 +920,7 @@ uint256 static GetOrphanRoot(const uint256& hash)
 }
 
 // ppcoin: find block wanted by given orphan block
-uint256 WantedByOrphan(const COrphanBlock* pblockOrphan)
-{
+uint256 WantedByOrphan(const COrphanBlock* pblockOrphan) {
     // Work back to the first block in the orphan chain
     while (mapOrphanBlocks.count(pblockOrphan->hashPrev))
         pblockOrphan = mapOrphanBlocks[pblockOrphan->hashPrev];
@@ -930,8 +928,7 @@ uint256 WantedByOrphan(const COrphanBlock* pblockOrphan)
 }
 
 // Remove a random orphan block (which does not have any dependent orphans).
-void static PruneOrphanBlocks()
-{
+void static PruneOrphanBlocks() {
     if (mapOrphanBlocksByPrev.size() <= (size_t)std::max((int64_t)0, GetArg("-maxorphanblocks", DEFAULT_MAX_ORPHAN_BLOCKS)))
         return;
 
@@ -956,16 +953,12 @@ void static PruneOrphanBlocks()
 }
 
 // miner's coin base reward
-int64_t GetProofOfWorkReward(int64_t nHeight, int64_t nFees)
-{
+int64_t GetProofOfWorkReward(int64_t nHeight, int64_t nFees) {
     int64_t nSubsidy = 0 * COIN;
 
-    if(nHeight == 5)
-    {
+    if(nHeight == 5) {
         nSubsidy = 2000000 * COIN;
-    }
-    else if(nHeight > 5)
-    {
+    } else if(nHeight > 5) {
         nSubsidy = 100 * COIN;
     }
 
@@ -973,8 +966,6 @@ int64_t GetProofOfWorkReward(int64_t nHeight, int64_t nFees)
 
     return nSubsidy + nFees;
 }
-
-#define NAT_E (2.7182818284590452353602874713526624977572470937L )
 
 static const unsigned short days[4][12] =
 {
@@ -988,12 +979,6 @@ static const unsigned short days[4][12] =
 #define APPROX(year, month, day, hour, minute, second) \
 (((((year-1970)/4*(365*4+1)+days[(year-1970)%4][month-1]+(day-1))*24+hour)*60+minute)*60+second)
 
-/*function(t:Number, b:Number, c:Number, d:Number):Number {
-    ts = (t/=d) * t;
-    tc = ts * t;
-    return b+c*(-2*tc + 3*ts);
-}*/
-
 float QuadraticEaseInOut(float p) {
     if(p < 0.5) {
         return 2 * p * p;
@@ -1001,11 +986,19 @@ float QuadraticEaseInOut(float p) {
     return (-2 * p * p) + (4 * p) - 1;
 }
 
+#define NAT_E (2.7182818284590452353602874713526624977572470937L )
+
+/*uint160 CoinCCInterest(uint160 P, double r, double t) {
+    r = r*t;
+    t = (P * 0.00000001L) * NAT_E;
+    return ceil(100000000 * pow(t, r));
+}*/
+
+
 // miner's coin stake reward based on coin age spent (coin-days)
-int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees)
-{
-    int64_t nSubsidy = nCoinAge * 7200 * CENT * 33 / (365 * 33 + 8);
-    int64_t nSubsidyFactually = ceil(pow(CENT * NAT_E, 7.2L*nCoinAge));
+int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees) {
+    int64_t nSubsidy = nCoinAge * 7200 * 1000000 * 33 / (365 * 33 + 8);
+    //uint256 nSubsidyFactually =
     int64_t n = GetAdjustedTime();
     time_t past = APPROX(2017, 11, 0, 0, 0, 0);
     time_t future = APPROX(2017, 11, 3, 0, 0, 0);
@@ -1422,6 +1415,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
     int64_t nValueIn = 0;
     int64_t nValueOut = 0;
     int64_t nStakeReward = 0;
+    int64_t nOldStakeReward = 0;
     unsigned int nSigOps = 0;
     BOOST_FOREACH(CTransaction& tx, vtx)
     {
@@ -1476,8 +1470,10 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
             nValueOut += nTxValueOut;
             if (!tx.IsCoinStake())
                 nFees += nTxValueIn - nTxValueOut;
-            if (tx.IsCoinStake())
+            if (tx.IsCoinStake()) {
                 nStakeReward = nTxValueOut - nTxValueIn;
+                nOldStakeReward = nTxValueOut - nTxValueIn;
+            }
 
             if (!tx.ConnectInputs(txdb, mapInputs, mapQueuedChanges, posThisTx, pindex, true, false, flags))
                 return false;
@@ -1498,14 +1494,17 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
     if (IsProofOfStake())
     {
         // ppcoin: coin stake tx earns reward instead of paying fee
-        uint64_t nCoinAge;
+        //uint160 nNewCoinAge;
+        int64_t nCoinAge;
         if (!vtx[1].GetCoinAge(txdb, nCoinAge))
             return error("ConnectBlock() : %s unable to get coin age for coinstake", vtx[1].GetHash().ToString());
 
+        //uint160 nNewCalculatedStakeReward = GetNewProofOfStakeReward(nCoinAge, nFees);
         int64_t nCalculatedStakeReward = GetProofOfStakeReward(nCoinAge, nFees);
 
-        if (nStakeReward > nCalculatedStakeReward)
+        if (nStakeReward > nCalculatedStakeReward) {
             return DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward));
+        }
     }
 
     // ppcoin: track money supply and mint amount info
@@ -1793,16 +1792,14 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
 // guaranteed to be in main chain by sync-checkpoint. This rule is
 // introduced to help nodes establish a consistent view of the coin
 // age (trust score) of competing branches.
-bool CTransaction::GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge, uint64_t *Coin, uint64_t *Age) const
-{
+bool CTransaction::GetCoinAge(CTxDB& txdb, int64_t& nCoinAge/*, uint64_t *Coin, uint64_t *Age*/) const {
     CBigNum bnCentSecond = 0;  // coin age in the unit of cent-seconds
     nCoinAge = 0;
 
     if (IsCoinBase())
         return true;
 
-    BOOST_FOREACH(const CTxIn& txin, vin)
-    {
+    BOOST_FOREACH(const CTxIn& txin, vin) {
         // First try finding the previous transaction in database
         CTransaction txPrev;
         CTxIndex txindex;

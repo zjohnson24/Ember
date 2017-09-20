@@ -1,0 +1,14 @@
+- New Wallet on Sept. 15th.
+- Rate Decrease over 3 days starting Nov. 1st at 0:00 UTC
+- Storage Capabilities and Utilization of Critical Network Infrastructure.
+  We will begin to be able to store wallet data in storage infrastructure built into the wallets. Encrypted end to end.
+- Surrogate Coins
+  Critical to the future success of the coin. The idea of a coin with both a real portion and an on/off ghost multi-splittable coin that can be redeemed after offline generation. With this comes a restructuring of how staking works as well as the storage alongside wallets to be redeemed at a future date.
+- Remote Staking
+  Remotely stake by pressing a button and inserting coins, you will stake online or offline.
+- One Deterministic Key Access with End to End Encryption
+  Backup your single key and that's all you need to do.
+- Masternodes that offer Remote Staking capabilities for a fee. (0.5%?)
+  Offer storage services for a neglible fee. (Price per byte per year?)
+  May be able to offer computation in a special language. More details will follow.
+- Distant future: Surrogate Coin Exchange

@@ -294,7 +294,30 @@ public:
         return (!(a == b));
     }
 
+/*    base_uint& pow(double exponent) {
+  		int zerodir;
+	    base_uint factor(1);
+		if (exponent < 0) {
+		    zerodir = 1;
+		    factor = factor/10;
+		} else {
+		    zerodir = -1;
+		    factor = 10;
+		}
 
+		base_uint result(1);
+		while (exponent != 0) {
+		    if (exponent % 2 != 0) {
+		      result *= factor;
+		      exponent += zerodir;
+		    } else {
+		      factor *= factor;
+		      exponent /= 2;
+		    }
+		}
+		return result;
+	}
+*/
 
     std::string GetHex() const
     {
