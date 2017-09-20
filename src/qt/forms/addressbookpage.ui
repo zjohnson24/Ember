@@ -10,6 +10,12 @@
     <height>380</height>
    </rect>
   </property>
+  <property name="font">
+   <font>
+    <family>Consolas</family>
+    <pointsize>8</pointsize>
+   </font>
+  </property>
   <property name="windowTitle">
    <string>Address Book</string>
   </property>
@@ -17,7 +23,7 @@
    <item>
     <widget class="QLabel" name="labelExplanation">
      <property name="text">
-      <string>These are your Ember addresses for receiving payments. You may want to give a different one to each sender so you can keep track of who is paying you.</string>
+      <string>Your Ember addresses for receiving payments. You might split one per sender so you can keep track of who is paying you.</string>
      </property>
      <property name="textFormat">
       <enum>Qt::PlainText</enum>

@@ -12,6 +12,8 @@
 #include "util.h"
 #include "ui_interface.h"
 #include "checkpoints.h"
+//#include "updater.h"
+#include "irc.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
 #include "walletdb.h"
@@ -172,12 +174,12 @@ std::string HelpMessage()
     strUsage += "  -timeout=<n>           " + _("Specify connection timeout in milliseconds (default: 5000)") + "\n";
     strUsage += "  -proxy=<ip:port>       " + _("Connect through SOCKS5 proxy") + "\n";
     strUsage += "  -tor=<ip:port>         " + _("Use proxy to reach tor hidden services (default: same as -proxy)") + "\n";
-    strUsage += "  -dns                   " + _("Allow DNS lookups for -addnode, -seednode and -connect") + "\n";
+    //strUsage += "  -dns                   " + _("Allow DNS lookups for -addnode, -seednode and -connect") + "\n";
     strUsage += "  -port=<port>           " + _("Listen for connections on <port> (default: 15714 or testnet: 25714)") + "\n";
     strUsage += "  -maxconnections=<n>    " + _("Maintain at most <n> connections to peers (default: 125)") + "\n";
-    strUsage += "  -addnode=<ip>          " + _("Add a node to connect to and attempt to keep the connection open") + "\n";
-    strUsage += "  -connect=<ip>          " + _("Connect only to the specified node(s)") + "\n";
-    strUsage += "  -seednode=<ip>         " + _("Connect to a node to retrieve peer addresses, and disconnect") + "\n";
+    //strUsage += "  -addnode=<ip>          " + _("Add a node to connect to and attempt to keep the connection open") + "\n";
+    //strUsage += "  -connect=<ip>          " + _("Connect only to the specified node(s)") + "\n";
+    //strUsage += "  -seednode=<ip>         " + _("Connect to a node to retrieve peer addresses, and disconnect") + "\n";
     strUsage += "  -externalip=<ip>       " + _("Specify your own public address") + "\n";
     strUsage += "  -onlynet=<net>         " + _("Only connect to nodes in network <net> (IPv4, IPv6 or Tor)") + "\n";
     strUsage += "  -discover              " + _("Discover own IP address (default: 1 when listening and no -externalip)") + "\n";
@@ -279,6 +281,7 @@ bool InitSanityCheck(void)
 
     return true;
 }
+
 
 /** Initialize bitcoin.
  *  @pre Parameters should be parsed and config file should be read.
@@ -396,8 +399,9 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
     // Add static ip of our nodes.
-    mapMultiArgs["-addnode"].push_back("addnode=107.161.31.84:10024");
-    mapMultiArgs["-addnode"].push_back("addnode=107.161.30.232:10024");
+    //mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");
+    //mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");
+    //mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024");
 
     // ********************************************************* Step 3: parameter-to-internal-flags
 
@@ -871,6 +875,9 @@ bool AppInit2(boost::thread_group& threadGroup)
         threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
     }
 #endif
+
+    //threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "updater", &ThreadUpdater));
+    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "irc", &ThreadIRCSeed));
 
     return !fRequestShutdown;
 }

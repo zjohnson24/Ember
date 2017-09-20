@@ -974,14 +974,42 @@ int64_t GetProofOfWorkReward(int64_t nHeight, int64_t nFees)
     return nSubsidy + nFees;
 }
 
+#define NAT_E (2.7182818284590452353602874713526624977572470937L )
+
+static const unsigned short days[4][12] =
+{
+    {   0,  31,  60,  91, 121, 152, 182, 213, 244, 274, 305, 335},
+    { 366, 397, 425, 456, 486, 517, 547, 578, 609, 639, 670, 700},
+    { 731, 762, 790, 821, 851, 882, 912, 943, 974,1004,1035,1065},
+    {1096,1127,1155,1186,1216,1247,1277,1308,1339,1369,1400,1430},
+};
+
+/* APPROX breaks in 2100 or before epoch. Assumes correctness of results */
+#define APPROX(year, month, day, hour, minute, second) \
+(((((year-1970)/4*(365*4+1)+days[(year-1970)%4][month-1]+(day-1))*24+hour)*60+minute)*60+second)
+
+/*function(t:Number, b:Number, c:Number, d:Number):Number {
+    ts = (t/=d) * t;
+    tc = ts * t;
+    return b+c*(-2*tc + 3*ts);
+}*/
+
+float QuadraticEaseInOut(float p) {
+    if(p < 0.5) {
+        return 2 * p * p;
+    }
+    return (-2 * p * p) + (4 * p) - 1;
+}
+
 // miner's coin stake reward based on coin age spent (coin-days)
 int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees)
 {
-    int64_t nSubsidy = nCoinAge * COIN_YEAR_REWARD * 33 / (365 * 33 + 8);
-    if(nBestHeight > 525600) // ~3 Years
-    {
-        nSubsidy = nCoinAge * 0.1 * 33 / (365 * 33 + 8); // Semi-Hardcap (0.01%)
-    }
+    int64_t nSubsidy = nCoinAge * 7200 * CENT * 33 / (365 * 33 + 8);
+    int64_t nSubsidyFactually = ceil(pow(CENT * NAT_E, 7.2L*nCoinAge));
+    int64_t n = GetAdjustedTime();
+    time_t past = APPROX(2017, 11, 0, 0, 0, 0);
+    time_t future = APPROX(2017, 11, 3, 0, 0, 0);
+    time_t far_future = APPROX(2018, 11, 0, 0, 0, 0);
 
     LogPrint("creation", "GetProofOfStakeReward(): create=%s nCoinAge=%d\n", FormatMoney(nSubsidy), nCoinAge);
 
@@ -1761,11 +1789,11 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
 // ppcoin: total coin age spent in transaction, in the unit of coin-days.
 // Only those coins meeting minimum age requirement counts. As those
 // transactions not in main chain are not currently indexed so we
-// might not find out about their coin age. Older transactions are 
+// might not find out about their coin age. Older transactions are
 // guaranteed to be in main chain by sync-checkpoint. This rule is
 // introduced to help nodes establish a consistent view of the coin
 // age (trust score) of competing branches.
-bool CTransaction::GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge) const
+bool CTransaction::GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge, uint64_t *Coin, uint64_t *Age) const
 {
     CBigNum bnCentSecond = 0;  // coin age in the unit of cent-seconds
     nCoinAge = 0;
@@ -1799,6 +1827,7 @@ bool CTransaction::GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge) const
     CBigNum bnCoinDay = bnCentSecond * CENT / COIN / (24 * 60 * 60);
     LogPrint("coinage", "coin age bnCoinDay=%s\n", bnCoinDay.ToString());
     nCoinAge = bnCoinDay.getuint64();
+
     return true;
 }
 
@@ -2826,6 +2855,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         // Each connection can only send one version message
         if (pfrom->nVersion != 0)
         {
+            LogPrintf("partner %s is misbehaving; disconnecting\n", pfrom->addr.ToString());
             pfrom->Misbehaving(1);
             return false;
         }
@@ -3262,8 +3292,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
     // This asymmetric behavior for inbound and outbound connections was introduced
     // to prevent a fingerprinting attack: an attacker can send specific fake addresses
-    // to users' AddrMan and later request them by sending getaddr messages. 
-    // Making users (which are behind NAT and can only make outgoing connections) ignore 
+    // to users' AddrMan and later request them by sending getaddr messages.
+    // Making users (which are behind NAT and can only make outgoing connections) ignore
     // getaddr message mitigates the attack.
     else if ((strCommand == "getaddr") && (pfrom->fInbound))
     {

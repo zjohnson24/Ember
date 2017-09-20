@@ -15,6 +15,7 @@
 #include "wallet.h"
 #include "ui_interface.h"
 #include "paymentserver.h"
+#include "updater.h"
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
 #endif
@@ -39,7 +40,7 @@ Q_IMPORT_PLUGIN(qtaccessiblewidgets)
 #endif
 
 // Need a global reference for the notifications to find the GUI
-static BitcoinGUI *guiref;
+BitcoinGUI *guiref;
 static QSplashScreen *splashref;
 
 static void ThreadSafeMessageBox(const std::string& message, const std::string& caption, unsigned int style)
@@ -82,7 +83,7 @@ static void InitMessage(const std::string &message)
 {
     if(splashref)
     {
-        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(232,186,63));
+        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(160,0,0));
         QApplication::instance()->processEvents();
     }
     LogPrintf("init message: %s\n", message);
@@ -166,8 +167,9 @@ int main(int argc, char *argv[])
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
     // Add Daemon config settings - Also gets us connected for initial launch (before config file takes effect)
-    mapMultiArgs["-addnode"].push_back("addnode=107.161.30.232:10024");
-    mapMultiArgs["-addnode"].push_back("addnode=107.161.31.84:10024");
+    //mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");
+    //mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");
+    //mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024");
 
     // Application identification (must be set before OptionsModel is initialized,
     // as it is used to locate QSettings)
@@ -288,6 +290,10 @@ int main(int argc, char *argv[])
                 // bitcoin: URIs
                 QObject::connect(paymentServer, SIGNAL(receivedURI(QString)), &window, SLOT(handleURI(QString)));
                 QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
+
+                // Run updater to check for new versions
+				DownloadManager manager(guiref);
+
 
                 app.exec();
 

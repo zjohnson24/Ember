@@ -73,7 +73,8 @@ public:
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockSize = 0;
 int64_t nLastCoinStakeSearchInterval = 0;
- 
+int64_t nCoinStakeFailedAttempts = 0;
+
 // We want to sort transactions by priority and fee, so:
 typedef boost::tuple<double, double, CTransaction*> TxPriority;
 class TxPriorityCompare
@@ -534,12 +535,14 @@ void ThreadStakeMiner(CWallet *pwallet)
         while (pwallet->IsLocked())
         {
             nLastCoinStakeSearchInterval = 0;
+            nCoinStakeFailedAttempts = 0;
             MilliSleep(1000);
         }
 
         while (vNodes.empty() || IsInitialBlockDownload())
         {
             nLastCoinStakeSearchInterval = 0;
+            nCoinStakeFailedAttempts = 0;
             fTryToSync = true;
             MilliSleep(1000);
         }
@@ -559,18 +562,21 @@ void ThreadStakeMiner(CWallet *pwallet)
         //
         int64_t nFees;
         auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, true, &nFees));
-        if (!pblock.get())
+        if (!pblock.get()) {
             return;
+        }
 
         // Trying to sign a block
-        if (pblock->SignBlock(*pwallet, nFees))
-        {
+        if (pblock->SignBlock(*pwallet, nFees)) {
             SetThreadPriority(THREAD_PRIORITY_NORMAL);
             CheckStake(pblock.get(), *pwallet);
             SetThreadPriority(THREAD_PRIORITY_LOWEST);
+            nCoinStakeFailedAttempts = 0;
             MilliSleep(500);
         }
-        else
+        else {
+        	nCoinStakeFailedAttempts += 1;
             MilliSleep(nMinerSleep);
+        }
     }
 }

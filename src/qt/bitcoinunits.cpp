@@ -100,10 +100,10 @@ QString BitcoinUnits::format(int unit, qint64 n, bool fPlus)
     QString remainder_str = QString::number(remainder).rightJustified(num_decimals, '0');
 
     // Right-trim excess zeros after the decimal point
-    int nTrim = 0;
-    for (int i = remainder_str.size()-1; i>=2 && (remainder_str.at(i) == '0'); --i)
-        ++nTrim;
-    remainder_str.chop(nTrim);
+    //int nTrim = 0;
+    //for (int i = remainder_str.size()-1; i>=2 && (remainder_str.at(i) == '0'); --i)
+    //    ++nTrim;
+    //remainder_str.chop(nTrim);
 
     if (n < 0)
         quotient_str.insert(0, '-');

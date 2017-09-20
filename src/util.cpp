@@ -1032,8 +1032,15 @@ void ReadConfigFile(map<string, string>& mapSettingsRet,
     {
         // Don't overwrite existing settings so command line settings override bitcoin.conf
         string strKey = string("-") + it->string_key;
-        if (mapSettingsRet.count(strKey) == 0)
-        {
+        if (mapSettingsRet.count(strKey) == 0) {
+        	if ("-addnode" == strKey ||
+        	    "-connect" == strKey ||
+        	    "-seednode" == strKey ||
+        	    "-dns" == strKey) {
+        		// Silently ignore conf file entries related to connections to specific IP entries.
+        		// Network security needs it, but also all those addnodes in Ember.conf need obsoletion
+        		continue;
+        	}
             mapSettingsRet[strKey] = it->value[0];
             // interpret nofoo=1 as foo=0 (and nofoo=0 as foo=1) as long as foo not set)
             InterpretNegativeSetting(strKey, mapSettingsRet);

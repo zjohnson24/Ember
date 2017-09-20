@@ -2,6 +2,7 @@
 #define OVERVIEWPAGE_H
 
 #include <QWidget>
+#include <QPushButton>
 
 namespace Ui {
     class OverviewPage;
@@ -27,6 +28,11 @@ public:
     void setClientModel(ClientModel *clientModel);
     void setWalletModel(WalletModel *walletModel);
     void showOutOfSyncWarning(bool fShow);
+    void ShowUpdateButton();
+    void ShowUpdateText();
+    void HideUpdateButton();
+    void HideUpdateText();
+    QPushButton* GetUpdateButton();
 
 public slots:
     void setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 immatureBalance);

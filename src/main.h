@@ -73,6 +73,7 @@ extern CBlockIndex* pindexBest;
 extern uint64_t nLastBlockTx;
 extern uint64_t nLastBlockSize;
 extern int64_t nLastCoinStakeSearchInterval;
+extern int64_t nCoinStakeFailedAttempts;
 extern const std::string strMessageMagic;
 extern int64_t nTimeBestReceived;
 extern bool fImporting;
@@ -387,10 +388,14 @@ public:
                        std::map<uint256, CTxIndex>& mapTestPool, const CDiskTxPos& posThisTx,
                        const CBlockIndex* pindexBlock, bool fBlock, bool fMiner, unsigned int flags = STANDARD_SCRIPT_VERIFY_FLAGS);
     bool CheckTransaction() const;
-    bool GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge) const;  // ppcoin: get transaction coin age
-
+    bool GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge) const {
+        return GetCoinAge(txdb, nCoinAge, NULL, NULL);
+    }
+    bool GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge, uint64_t *Coin, uint64_t *Age) const; // ppcoin: get transaction coin age
     const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
 };
+
+
 
 /** wrapper for CTxOut that provides a more compact serialization */
 class CTxOutCompressor
@@ -850,7 +855,7 @@ public:
     int64_t nMoneySupply;
 
     unsigned int nFlags;  // ppcoin: block index flags
-    enum  
+    enum
     {
         BLOCK_PROOF_OF_STAKE = (1 << 0), // is proof-of-stake block
         BLOCK_STAKE_ENTROPY  = (1 << 1), // entropy bit for stake modifier

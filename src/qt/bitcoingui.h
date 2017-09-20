@@ -46,6 +46,8 @@ public:
     */
     void setWalletModel(WalletModel *walletModel);
 
+    OverviewPage *overviewPage;
+
 protected:
     void changeEvent(QEvent *e);
     void closeEvent(QCloseEvent *event);
@@ -60,7 +62,6 @@ private:
 
     QStackedWidget *centralStackedWidget;
 
-    OverviewPage *overviewPage;
     QWidget *transactionsPage;
     AddressBookPage *addressBookPage;
     AddressBookPage *receiveCoinsPage;
