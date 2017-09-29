@@ -2,7 +2,9 @@
 in MSYS shell invoke the following:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 $ cd /e/projects/EmberOld/deps/db-6.1.26/build_unix/
-$ ../dist/configure -enable-cxx --enable-mingw --disable-pthread_api --disable-replication
+$ sh ../dist/configure -enable-cxx --enable-mingw --disable-pthread_api --disable-replication
+
+export PATH=/e/Qt5_9_1/Tools/mingw530_32/bin:/e/Qt5_9_1/5.9.1/mingw53_32/bin:$PATH
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Then change ../src/os/os_pid.c

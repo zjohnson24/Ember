@@ -8,17 +8,14 @@
 #include "init.h"
 #include <boost/algorithm/string/predicate.hpp>
 
-void WaitForShutdown(boost::thread_group* threadGroup)
-{
+void WaitForShutdown(boost::thread_group* threadGroup) {
     bool fShutdown = ShutdownRequested();
     // Tell the main threads to shutdown.
-    while (!fShutdown)
-    {
+    while (!fShutdown) {
         MilliSleep(200);
         fShutdown = ShutdownRequested();
     }
-    if (threadGroup)
-    {
+    if (threadGroup) {
         threadGroup->interrupt_all();
         threadGroup->join_all();
     }

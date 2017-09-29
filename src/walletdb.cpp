@@ -675,32 +675,27 @@ void ThreadFlushWalletDB(const string& strFile)
     unsigned int nLastSeen = nWalletDBUpdated;
     unsigned int nLastFlushed = nWalletDBUpdated;
     int64_t nLastWalletUpdate = GetTime();
-    while (true)
-    {
+    while (true) {
+    	boost::this_thread::interruption_point();
         MilliSleep(500);
 
-        if (nLastSeen != nWalletDBUpdated)
-        {
+        if (nLastSeen != nWalletDBUpdated) {
             nLastSeen = nWalletDBUpdated;
             nLastWalletUpdate = GetTime();
         }
 
-        if (nLastFlushed != nWalletDBUpdated && GetTime() - nLastWalletUpdate >= 2)
-        {
+        if (nLastFlushed != nWalletDBUpdated && GetTime() - nLastWalletUpdate >= 2) {
             TRY_LOCK(bitdb.cs_db,lockDb);
-            if (lockDb)
-            {
+            if (lockDb) {
                 // Don't do this if any databases are in use
                 int nRefCount = 0;
                 map<string, int>::iterator mi = bitdb.mapFileUseCount.begin();
-                while (mi != bitdb.mapFileUseCount.end())
-                {
+                while (mi != bitdb.mapFileUseCount.end()) {
                     nRefCount += (*mi).second;
                     mi++;
                 }
 
-                if (nRefCount == 0)
-                {
+                if (nRefCount == 0) {
                     boost::this_thread::interruption_point();
                     map<string, int>::iterator mi = bitdb.mapFileUseCount.find(strFile);
                     if (mi != bitdb.mapFileUseCount.end())

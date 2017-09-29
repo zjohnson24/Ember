@@ -1,32 +1,56 @@
 TEMPLATE = app
 TARGET = Ember-qt
-VERSION = 1.1.3.0
+VERSION = 1.1.3.1
+ROOT = E:/projects/EmberOld
+win32:ROOT_UNIXIZED = /e/projects/EmberOld
+else:ROOT_UNIXIZED = $${ROOT}
 INCLUDEPATH += src src/json src/qt
-QT += network gui widgets core
+QT += network gui widgets core sql
 DEFINES += ENABLE_WALLET
-DEFINES += BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE
+DEFINES += BOOST_THREAD_USE_LIB
+DEFINES += BOOST_SPIRIT_THREADSAFE
+DEFINES += BOOST_NO_CXX11_SCOPED_ENUMS
 DEFINES += BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN
-DEFINES += QT_GUI __NO_SYSTEM_INCLUDES
+DEFINES += QT_GUI
+DEFINES += __NO_SYSTEM_INCLUDES
 CONFIG += no_include_pwd
 CONFIG += thread
 CONFIG += static
+QMAKE_CXXFLAGS_RELEASE -= -O2
+QMAKE_CXXFLAGS_RELEASE = -Os
+QMAKE_CFLAGS_RELEASE -= -O2
+QMAKE_CFLAGS_RELEASE = -Os
+
+
 
 greaterThan(QT_MAJOR_VERSION, 4) {
     QT += widgets
     DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
 }
 
-win32{
-OPENSSL_INCLUDE_PATH=E:/projects/EmberOld/deps/openssl-1.0.2l/include
-MINIUPNPC_INCLUDE_PATH=E:/projects/EmberOld/deps
-MINIUPNPC_LIB_PATH=E:/projects/EmberOld/deps/miniupnpc
-QRENCODE_INCLUDE_PATH=C:/deps/qrencode-3.4.4
-QRENCODE_LIB_PATH=C:/deps/qrencode-3.4.4/.libs
+CONFIG(release, debug|release) {
+    DESTDIR = $${ROOT}/release
+    windows:QMAKE_POST_LINK += upx -k --best --overlay=strip --strip-relocs=0 --compress-icons=2 $(DESTDIR_TARGET)
+#    windows:QMAKE_POST_LINK += signtool.exe sign /t http://timestamp.verisign.com/scripts/timstamp.dll /f "MyCert.pfx" /p MyPassword /d $(DESTDIR_TARGET) $(DESTDIR_TARGET)
+} else {
+    DESTDIR = $${ROOT}/debug
 }
 
-OBJECTS_DIR = E:/projects/EmberOld/build
-MOC_DIR = E:/projects/EmberOld/build
-UI_DIR = E:/projects/EmberOld/build
+DESTDIR_TARGET = $${DESTDIR}$${TARGET}.exe
+
+BUILD_DIR = $${ROOT}/build
+OBJECTS_DIR = $$BUILD_DIR
+MOC_DIR = $$BUILD_DIR
+RCC_DIR = $$BUILD_DIR
+UI_DIR = $$BUILD_DIR
+
+win32 {
+    OPENSSL_INCLUDE_PATH=$${ROOT}/deps/openssl-1.0.2l/include
+    MINIUPNPC_INCLUDE_PATH=$${ROOT}/deps
+    MINIUPNPC_LIB_PATH=$${ROOT}/deps/miniupnpc
+    QRENCODE_INCLUDE_PATH=$${ROOT}/deps/qrencode-3.4.4
+    QRENCODE_LIB_PATH=$${ROOT}/deps/qrencode-3.4.4/.libs
+}
 
 LIBS += -Wl,-Bstatic
 QMAKE_LFLAGS *= -static
@@ -36,8 +60,8 @@ macx:QMAKE_CXXFLAGS += -mmacosx-version-min=10.7 -arch x86_64 -isysroot /Applica
 
 !win32 {
 # for extra security against potential buffer overflows: enable GCCs Stack Smashing Protection
-QMAKE_CXXFLAGS *= -march=i686 -fstack-protector-all --param ssp-buffer-size=1 -fno-tree-vectorize
-QMAKE_LFLAGS *= -march=i686 -fstack-protector-all --param ssp-buffer-size=1 -fno-tree-vectorize -static
+QMAKE_CXXFLAGS *= -march=i686 -fstack-protector-all --param ssp-buffer-size=1
+QMAKE_LFLAGS *= -march=i686 -fstack-protector-all --param ssp-buffer-size=1 -static
 # We need to exclude this for Windows cross compile with MinGW 4.2.x, as it will result in a non-working executable!
 # This can be enabled for Windows, when we switch to MinGW >= 4.4.x.
 }
@@ -93,7 +117,7 @@ contains(BITCOIN_NEED_QT_PLUGINS, 1) {
 }
 
 INCLUDEPATH += src/leveldb/include src/leveldb/helpers
-LIBS += $$PWD/src/leveldb/libleveldb.a $$PWD/src/leveldb/libmemenv.a
+LIBS += $${ROOT}/src/leveldb/libleveldb.a $${ROOT}/src/leveldb/libmemenv.a
 SOURCES += src/txdb-leveldb.cpp \
     src/aes_helper.c \
     src/blake.c \
@@ -109,21 +133,22 @@ SOURCES += src/txdb-leveldb.cpp \
     src/skein.c \
     src/fugue.c \
     src/hamsi.c
-!win32 {
-    # we use QMAKE_CXXFLAGS_RELEASE even without RELEASE=1 because we use RELEASE to indicate linking preferences not -O preferences
-    genleveldb.commands = cd $$PWD/src/leveldb && CC=$$QMAKE_CC CXX=$$QMAKE_CXX $(MAKE) OPT=\"$$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_RELEASE\" libleveldb.a libmemenv.a
-} else {
+
+
+# we use QMAKE_CXXFLAGS_RELEASE even without RELEASE=1 because we use RELEASE to indicate linking preferences not -O preferences
+genleveldb.commands = cd $${ROOT}/src/leveldb && $(notdir $(MAKE)) CC=$$QMAKE_CC CXX=$$QMAKE_CXX OPT=\"$$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_RELEASE\" libleveldb.a libmemenv.a
+win32 {
     # make an educated guess about what the ranlib command is called
-    isEmpty(QMAKE_RANLIB) {
+     isEmpty(QMAKE_RANLIB) {
         QMAKE_RANLIB = $$replace(QMAKE_STRIP, strip, ranlib)
     }
-    LIBS += -lshlwapi
+    LIBS += -lshlwapi -lhid -lsetupapi
     # Disable if building on Windows
     #genleveldb.commands = cd $$PWD/src/leveldb && CC=$$QMAKE_CC CXX=$$QMAKE_CXX TARGET_OS=OS_WINDOWS_CROSSCOMPILE $(MAKE) OPT=\"$$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_RELEASE\" libleveldb.a libmemenv.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libleveldb.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libmemenv.a
 }
-genleveldb.target = $$PWD/src/leveldb/libleveldb.a
+genleveldb.target = $${ROOT}/src/leveldb/libleveldb.a
 genleveldb.depends = FORCE
-PRE_TARGETDEPS += $$PWD/src/leveldb/libleveldb.a
+PRE_TARGETDEPS += $${ROOT}/src/leveldb/libleveldb.a
 QMAKE_EXTRA_TARGETS += genleveldb
 # Gross ugly hack that depends on qmake internals, unfortunately there is no other way to do it.
 # Disable on Windows
@@ -132,7 +157,7 @@ QMAKE_EXTRA_TARGETS += genleveldb
 # regenerate src/build.h
 !windows|contains(USE_BUILD_INFO, 1) {
     genbuild.depends = FORCE
-    genbuild.commands = cd $$PWD; /bin/sh share/genbuild.sh $$OUT_PWD/build/build.h
+    genbuild.commands = cd $${ROOT} && /bin/sh $${ROOT_UNIXIZED}/share/genbuild.sh $${ROOT_UNIXIZED}/build/build.h
     genbuild.target = $$OUT_PWD/build/build.h
     PRE_TARGETDEPS += $$OUT_PWD/build/build.h
     QMAKE_EXTRA_TARGETS += genbuild
@@ -141,10 +166,8 @@ QMAKE_EXTRA_TARGETS += genleveldb
 
 contains(USE_O3, 1) {
     message(Building O3 optimization flag)
-    QMAKE_CXXFLAGS_RELEASE -= -O2
-    QMAKE_CFLAGS_RELEASE -= -O2
-    QMAKE_CXXFLAGS += -O3
-    QMAKE_CFLAGS += -O3
+    QMAKE_CXXFLAGS = -O3
+    QMAKE_CFLAGS = -O3
 }
 
 *-g++-32 {
@@ -373,19 +396,19 @@ CODECFORTR = UTF-8
 
 # for lrelease/lupdate
 # also add new translations to src/qt/bitcoin.qrc under translations/
-TRANSLATIONS = $$files(src/qt/locale/bitcoin_*.ts)
+TRANSLATIONS = $$files($${ROOT}/src/qt/locale/bitcoin_*.ts)
 
 isEmpty(QMAKE_LRELEASE) {
     win32:QMAKE_LRELEASE = $$[QT_INSTALL_BINS]\\lrelease.exe
     else:QMAKE_LRELEASE = $$[QT_INSTALL_BINS]/lrelease
 }
-isEmpty(QM_DIR):QM_DIR = $$PWD/src/qt/locale
+isEmpty(QM_DIR):QM_DIR = $${ROOT}/src/qt/locale
 # automatically build translations, so they can be included in resource file
 TSQM.name = lrelease ${QMAKE_FILE_IN}
 TSQM.input = TRANSLATIONS
 TSQM.output = $$QM_DIR/${QMAKE_FILE_BASE}.qm
 TSQM.commands = $$QMAKE_LRELEASE ${QMAKE_FILE_IN} -qm ${QMAKE_FILE_OUT}
-TSQM.CONFIG = no_link
+TSQM.CONFIG = no_link target_predeps
 QMAKE_EXTRA_COMPILERS += TSQM
 
 # "Other files" to show in Qt Creator
@@ -418,7 +441,7 @@ windows:RC_FILE = src/qt/res/bitcoin-qt.rc
 # thread-safety flag. GCC has -mthreads to enable this, but it doesn't
 # work with static linking. -lmingwthrd must come BEFORE -lmingw, so
 # it is prepended to QMAKE_LIBS_QT_ENTRY.
-DEFINES += _MT BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN
+DEFINES += _MT
 QMAKE_LIBS_QT_ENTRY = -lmingwthrd $$QMAKE_LIBS_QT_ENTRY
 
 macx:HEADERS += src/qt/macdockiconhandler.h
@@ -434,14 +457,14 @@ macx:QMAKE_INFO_PLIST = share/qt/Info.plis
 
 # Set libraries and includes at end, to use platform-defined defaults if not overridden
 #INCLUDEPATH += E:/Qt5_9_1/Tools/mingw530_32/include
-INCLUDEPATH += E:/Qt5_9_1/5.9.1/mingw53_32/include
-INCLUDEPATH += E:/projects/EmberOld/inc/boost_1_55_0
-INCLUDEPATH += E:/projects/EmberOld/inc/db-6.1.26
-INCLUDEPATH += E:/projects/EmberOld/inc/openssl-1.0.2l
+#INCLUDEPATH += E:/Qt5_9_1/5.9.1/mingw53_32/include
+INCLUDEPATH += $${ROOT}/inc/boost_1_55_0
+INCLUDEPATH += $${ROOT}/inc/db-6.1.26
+INCLUDEPATH += $${ROOT}/inc/openssl-1.0.2l
 INCLUDEPATH += $$QRENCODE_INCLUDE_PATH
-LIBS += -LE:/projects/EmberOld/libs
+LIBS += -L$${ROOT}/libs
 #LIBS += -LE:/Qt5_9_1/Tools/mingw530_32/lib
-LIBS += -LE:/Qt5_9_1/5.9.1/mingw53_32/lib
+#LIBS += -LE:/Qt5_9_1/5.9.1/mingw53_32/lib
 LIBS += $$join(QRENCODE_LIB_PATH,,-L,)
 LIBS += -lssl
 LIBS += -lcrypto

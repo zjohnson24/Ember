@@ -27,7 +27,7 @@
 using namespace std;
 using namespace boost;
 
-static const int MAX_OUTBOUND_CONNECTIONS = 64;
+static const int MAX_OUTBOUND_CONNECTIONS = 4096;
 
 bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 
@@ -1002,8 +1002,9 @@ void ThreadDNSAddressSeed()
     // goal: only query DNS seeds if address need is acute
     if ((addrman.size() > 0) &&
         (!GetBoolArg("-forcednsseed", false))) {
+    	boost::this_thread::interruption_point();
         MilliSleep(11 * 1000);
-
+        boost::this_thread::interruption_point();
         LOCK(cs_vNodes);
         if (vNodes.size() >= 2) {
             LogPrintf("P2P peers available. Skipped DNS seeding.\n");
@@ -1089,22 +1090,23 @@ void ThreadOpenConnections()
             {
                 CAddress addr;
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
-                for (int i = 0; i < 10 && i < nLoop; i++)
-                {
-                    MilliSleep(50);
+                for (int i = 0; i < 10 && i < nLoop; i++) {
+                	boost::this_thread::interruption_point();
+                    MilliSleep(500);
                 }
             }
-            MilliSleep(50);
+            MilliSleep(500);
         }
     }
 
     // Initiate network connections
     int64_t nStart = GetTime();
     while (true) {
+    	boost::this_thread::interruption_point();
         ProcessOneShot();
-
-        MilliSleep(10);
-
+        boost::this_thread::interruption_point();
+        MilliSleep(500);
+        boost::this_thread::interruption_point();
         CSemaphoreGrant grant(*semOutbound);
         boost::this_thread::interruption_point();
 
@@ -1141,6 +1143,7 @@ void ThreadOpenConnections()
 
         int nTries = 0;
         while (true) {
+        	boost::this_thread::interruption_point();
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
@@ -1198,9 +1201,9 @@ void ThreadOpenAddedConnections()
                 CAddress addr;
                 CSemaphoreGrant grant(*semOutbound);
                 OpenNetworkConnection(addr, &grant, strAddNode.c_str());
-                MilliSleep(25);
+                MilliSleep(200);
             }
-            MilliSleep(5*1000); // Retry every 5 seconds
+            MilliSleep(2*60*1000); // Retry every 2 minutes
         }
     }
 
@@ -1245,9 +1248,9 @@ void ThreadOpenAddedConnections()
         {
             CSemaphoreGrant grant(*semOutbound);
             OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
-            MilliSleep(25);
+            MilliSleep(200);
         }
-        MilliSleep(5*1000); // Retry every 5 seconds
+        MilliSleep(60*1000); // Retry every 60 seconds
     }
 }
 
@@ -1386,7 +1389,7 @@ void ThreadMessageHandler()
         }
 
         if (fSleep)
-            MilliSleep(25);
+            MilliSleep(250);
     }
 }
 
@@ -1555,7 +1558,7 @@ void StartNode(boost::thread_group& threadGroup)
 {
     if (semOutbound == NULL) {
         // initialize semaphore
-        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 128));
+        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 64));
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 

@@ -398,10 +398,6 @@ bool AppInit2(boost::thread_group& threadGroup)
             LogPrintf("AppInit2 : parameter interaction: -salvagewallet=1 -> setting -rescan=1\n");
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
-    // Add static ip of our nodes.
-    //mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");
-    //mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");
-    //mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024");
 
     // ********************************************************* Step 3: parameter-to-internal-flags
 
@@ -484,7 +480,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     if (GetBoolArg("-shrinkdebugfile", !fDebug))
         ShrinkDebugFile();
-    LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+    LogPrintf("\n\n\n\n\n\n\n");
     LogPrintf("Ember version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
     LogPrintf("Using OpenSSL version %s\n", SSLeay_version(SSLEAY_VERSION));
     if (!fLogTimestamps)
@@ -877,7 +873,12 @@ bool AppInit2(boost::thread_group& threadGroup)
 #endif
 
     //threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "updater", &ThreadUpdater));
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "irc", &ThreadIRCSeed));
+
+    if (!IsLimited(NET_IPV4) && 					  // Connect to IRC if we won't use IPv4 connections and
+   		(!mapArgs.count("-connect") || !fNoListen) && //  if (we make outbound connections or accept inbound ones) and
+    	GetBoolArg("-irc", true)) {					  //  if IRC is enabled.
+    	threadGroup.create_thread(boost::bind(&LoopForever<void (*)()>, "irc", &ThreadIRCSeed, 1000*60*20));
+    }
 
     return !fRequestShutdown;
 }

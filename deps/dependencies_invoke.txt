@@ -1,4 +1,4 @@
-This post is written for someone who is not a coin developer or comfortable in a
+﻿This post is written for someone who is not a coin developer or comfortable in a
 linux environment to show you how to prepare your windows computer to be able to
 compile 'almost' any coin wallet yourself. If you follow the directions you should
 be able to compile windows qt wallets from source on a windows computer in about
@@ -270,7 +270,22 @@ Open a Windows command prompt and type the following
 
 cd C:\Qt\485
 
-configure -release -opensource -confirm-license -static -no-sql-sqlite -no-qt3support -no-opengl -qt-zlib -no-gif -qt-libpng -qt-libmng -no-libtiff -qt-libjpeg -no-dsp -no-vcproj -no-openssl -no-dbus -no-phonon -no-phonon-backend -no-multimedia -no-audio-backend -no-webkit -no-script -no-scripttools -no-declarative -no-declarative-debug -no-style-plastique -no-style-cleanlooks -no-style-motif -no-style-cde -nomake demos -nomake examples
+configure -release -opensource -confirm-license -static -platform win32-g++ -no-sql-sqlite -no-qt3support -no-opengl -qt-zlib -no-gif -qt-libpng -qt-libmng -no-libtiff -qt-libjpeg -no-dsp -no-vcproj -no-openssl -no-dbus -no-phonon -no-phonon-backend -no-multimedia -no-audio-backend -no-webkit -no-script -no-scripttools -no-declarative -no-declarative-debug -no-style-plastique -no-style-cleanlooks -no-style-motif -no-style-cde -nomake demos -make libs -nomake tools -nomake examples -nomake tests
+
+configure -release -opensource -confirm-license -static -platform win32-g++  -prefix "E:\Qt5_9_1\static" -no-angle -no-sql-sqlite -qt-zlib -no-gif -qt-libpng  -qt-libjpeg -qt-openssl -no-dbus -nomake tools -nomake examples -make tests -make libs
+
+configure -static -platform win32-g++ -prefix "C:\Qt\Qt5_static" -debug-and-release -opensource -confirm-license -nomake examples -nomake tests -nomake tools -opengl desktop -no-angle -qt-sql-sqlite -make libs -qt-zlib -qt-pcre -qt-libpng -qt-libjpeg -qt-freetype
+
+configure -release -opensource -confirm-license -static -platform win32-g++ -prefix "E:\Qt5_9_1\static_r121" -qt-zlib -qt-libpng -qt-libjpeg -no-angle -no-opengl -no-sql-sqlite -openssl -openssl-linked OPENSSL_LIBS="-lssl -lcrypto -luser32 -ladvapi32 -lgdi32" -I "E:\projects\EmberOld\inc\openssl-1.0.2l" -L "E:\projects\EmberOld\libs" -nomake tools -nomake examples -nomake tests -make libs
+
+
+g++ -c -include .pch\release\qt_pch.h -fno-keep-inline-dllexport -pipe -mstackrealign -msse2 -mfpmath=sse -O2 -std=c++1z -fno-exceptions -Wextra -Wall -W -Wvla -Wdate-time -DUNICOD
+E -DQT_NO_USING_NAMESPACE -DQT_NO_FOREACH -DWINVER=0x0600 -D_WIN32_WINNT=0x0600 -DQT_USE_SYSTEM_PROXIES -DQT_NO_NARROWING_CONVERSIONS_IN_CONNECT -DQT_BUILD_NETWORK_LIB -DQT_BUILDIN
+G_QT -D_CRT_SECURE_NO_WARNINGS -D_USE_MATH_DEFINES -DQT_NO_CAST_TO_ASCII -DQT_ASCII_CAST_WARNINGS -DQT_MOC_COMPAT -DQT_USE_QSTRINGBUILDER -DQT_DEPRECATED_WARNINGS -DQT_DISABLE_DEPR
+ECATED_BEFORE=0x040800 -DQT_NO_DEBUG -DQT_CORE_LIB -DQT_CORE_LIB -DQT_NO_EXCEPTIONS -I. -I..\3rdparty\zlib -Ikernel -I..\..\include -I..\..\include\QtNetwork -I..\..\include\QtNetw
+ork\5.9.1 -I..\..\include\QtNetwork\5.9.1\QtNetwork -Itmp -IE:\Qt5_9_1\static\include\QtCore\5.9.1 -IE:\Qt5_9_1\static\include\QtCore\5.9.1\QtCore -IE:\Qt5_9_1\static\include -IE:\
+Qt5_9_1\static\include\QtCore -I.moc\release -I..\..\mkspecs\win32-g++  -o .obj\release\qhttpnetworkconnection.o access\qhttpnetworkconnection.cpp
+
 
 mingw32-make
 
@@ -505,15 +520,15 @@ If you want to help keep me motivated to keep this guide updated and expanded to
 or if this helped you please consider tossing a few coins at me.
 
 (update May 1, 2015 Since posting this months ago and tens of thousands of hits or more (who knows how many really) , countless questions answered, lots of thank you's not one person EVER sent me one satoshi, even a litoshi, or anything else.
- 
+
 Zero --- A thankless community that wants everything handed to them on english bone china !!
- 
+
 SO AS A RESULT ENJOY THE GUIDE --- DUE TO THESE CIRCUMSTANCES I CANNOT GUARANTEE ANY FUTURE SUPPORT OR QUESTIONS --- MY BEST TO YOU ALL ----- (thanks also to Jimmy for pinning the thread which you can unpin if you like)
- 
+
 edit as of december 2015 - due to changes in the source code of Photon this guide will no longer work on the current souce master tree , you can still use the guide pulling from here
- 
+
 https://github.com/photonproject/photon/tree/f8354b9a83fcf527d05ed01411198b3544453965
-Edited December 21, 2015 by cinnamon_carter 
+Edited December 21, 2015 by cinnamon_carter
 updated link to photon souce
 
 
@@ -525,7 +540,7 @@ $ ../dist/configure -enable-cxx --enable-mingw --disable-pthread_api --disable-r
 ///////////////////////////////////
 Then change ../src/os/os_pid.c
 ///////////////////////////////////
-/* 
+/*
  * When building on MinGW, we define both HAVE_PTHREAD_SELF and DB_WIN32,
  * and we are using pthreads instead of Windows threads implementation.
  * So here, we need to check the thread implementations before checking
@@ -550,7 +565,7 @@ Then change ../src/os/os_pid.c
 
 To this:
 
-/* 
+/*
  * When building on MinGW, we define both HAVE_PTHREAD_SELF and DB_WIN32,
  * and we are using pthreads instead of Windows threads implementation.
  * So here, we need to check the thread implementations before checking

@@ -41,6 +41,9 @@ struct ircaddr {
 bool RecvIRCLine(SOCKET hSocket, string& strLine) {
     strLine = "";
     for (;;) {
+    	boost::this_thread::interruption_point();
+    	if (ShutdownRequested())
+            return false;
         char c;
         int nBytes = recv(hSocket, &c, 1, 0);
         if (nBytes > 0) {
@@ -52,14 +55,12 @@ bool RecvIRCLine(SOCKET hSocket, string& strLine) {
             if (strLine.size() >= 9000)
                 return true;
         } else if (nBytes <= 0) {
-            if (ShutdownRequested())
-                return false;
             if (nBytes < 0) {
                 int nErr = WSAGetLastError();
                 if (nErr == WSAEMSGSIZE)
                     continue;
                 if (nErr == WSAEWOULDBLOCK || nErr == WSAEINTR || nErr == WSAEINPROGRESS) {
-                    Sleep(10);
+                    MilliSleep(40);
                     continue;
                 }
             }
@@ -122,15 +123,14 @@ static bool Send(SOCKET hSocket, const char* pszSend) {
 
 bool RecvLineIRC(SOCKET hSocket, string& strLine) {
     for (;;) {
+    	boost::this_thread::interruption_point();
+    	if (ShutdownRequested())
+            return false;
         bool fRet = RecvIRCLine(hSocket, strLine);
-        if (fRet)
-        {
-            if (ShutdownRequested())
-                return false;
+        if (fRet) {
             vector<string> vWords;
             ParseString(strLine, ' ', vWords);
-            if (vWords.size() >= 1 && vWords[0] == "PING")
-            {
+            if (vWords.size() >= 1 && vWords[0] == "PING") {
                 strLine[1] = 'O';
                 strLine += '\r';
                 Send(hSocket, strLine.c_str());
@@ -143,6 +143,7 @@ bool RecvLineIRC(SOCKET hSocket, string& strLine) {
 
 int RecvUntil(SOCKET hSocket, const char* psz1, const char* psz2=NULL, const char* psz3=NULL, const char* psz4=NULL) {
     for (;;) {
+    	boost::this_thread::interruption_point();
         string strLine;
         strLine.reserve(10000);
         if (!RecvLineIRC(hSocket, strLine))
@@ -165,10 +166,11 @@ bool Wait(int nSeconds) {
     }
     LogPrintf("IRC waiting %d seconds to reconnect\n", nSeconds);
     for (int i = 0; i < nSeconds; i++) {
+    	boost::this_thread::interruption_point();
         if (ShutdownRequested()) {
             return false;
         }
-        Sleep(1000);
+        MilliSleep(1000);
     }
     return true;
 }
@@ -176,6 +178,7 @@ bool Wait(int nSeconds) {
 bool RecvCodeLine(SOCKET hSocket, const char* psz1, string& strRet) {
     strRet.clear();
     for (;;) {
+    	boost::this_thread::interruption_point();
         string strLine;
         if (!RecvLineIRC(hSocket, strLine)) {
             return false;
@@ -231,175 +234,149 @@ void ThreadIRCSeed() {
     // Make this thread recognisable as the IRC seeding thread
     RenameThread("Ember-ircseed");
 
-    try {
-        // Don't connect to IRC if we won't use IPv4 connections.
-        if (IsLimited(NET_IPV4)) {
-            return;
-        }
+    int nErrorWait = 10;
+    int nRetryWait = 10;
+    int nNameRetry = 0;
 
-        // ... or if we won't make outbound connections and won't accept inbound ones.
-        if (mapArgs.count("-connect") && fNoListen) {
-            return;
-        }
+begin_irc:
+	boost::this_thread::interruption_point();
+    CService addrConnect("62.210.131.147", 7777); // irc.lfnet.org
 
-        // ... or if IRC is not enabled.
-        if (!GetBoolArg("-irc", true)) {
-            return;
-        }
-
-        LogPrintf("ThreadIRCSeed started\n");
-        int nErrorWait = 10;
-        int nRetryWait = 10;
-        int nNameRetry = 0;
-
-        while (!ShutdownRequested()) {
-            CService addrConnect("62.210.131.147", 7777); // irc.lfnet.org
-
-            CService addrIRC("irc.lfnet.org", 7777, true);
-            if (addrIRC.IsValid()) {
-                addrConnect = addrIRC;
-            }
-
-            SOCKET hSocket;
-            if (!ConnectSocket(addrConnect, hSocket, 60*5)) {
-                LogPrintf("IRC connect failed\n");
-                nErrorWait = nErrorWait * 11 / 10;
-                if (Wait(nErrorWait += 60))
-                    continue;
-                else
-                    return;
-            }
-
-            if (!RecvUntil(hSocket, "Found your hostname", "using your IP address instead", "Couldn't look up your hostname", "ignoring hostname")) {
-                closesocket(hSocket);
-                hSocket = INVALID_SOCKET;
-                nErrorWait = nErrorWait * 11 / 10;
-                if (Wait(nErrorWait += 60))
-                    continue;
-                else
-                    return;
-            }
-
-            CNetAddr addrIPv4("1.2.3.4"); // arbitrary IPv4 address to make GetLocal prefer IPv4 addresses
-            CService addrLocal;
-            string strMyName;
-            // Don't use our IP as our nick if we're not listening
-            // or if it keeps failing because the nick is already in use.
-            if (!fNoListen && GetLocal(addrLocal, &addrIPv4) && nNameRetry<3)
-                strMyName = EncodeAddress(GetLocalAddress(&addrConnect));
-            if (strMyName == "")
-                strMyName = strprintf("x%llu", GetRand(1000000000));
-
-            Send(hSocket, strprintf("NICK %s\r", strMyName.c_str()).c_str());
-            Send(hSocket, strprintf("USER %s 8 * : %s\r", strMyName.c_str(), strMyName.c_str()).c_str());
-
-            int nRet = RecvUntil(hSocket, " 004 ", " 433 ");
-            if (nRet != 1)
-            {
-                closesocket(hSocket);
-                hSocket = INVALID_SOCKET;
-                if (nRet == 2) {
-                    LogPrintf("IRC name already in use\n");
-                    nNameRetry++;
-                    Wait(10);
-                    continue;
-                }
-                nErrorWait = nErrorWait * 11 / 10;
-                if (Wait(nErrorWait += 60))
-                    continue;
-                else
-                    return;
-            }
-            nNameRetry = 0;
-            Sleep(500);
-
-            // Get our external IP from the IRC server and re-nick before joining the channel
-            CNetAddr addrFromIRC;
-            if (GetIPFromIRC(hSocket, strMyName, addrFromIRC)) {
-                LogPrintf("GetIPFromIRC() returned %s\n", addrFromIRC.ToString().c_str());
-                // Don't use our IP as our nick if we're not listening
-                if (!fNoListen && addrFromIRC.IsRoutable()) {
-                    // IRC lets you to re-nick
-                    AddLocal(addrFromIRC, LOCAL_IRC);
-                    strMyName = EncodeAddress(GetLocalAddress(&addrConnect));
-                    Send(hSocket, strprintf("NICK %s\r", strMyName.c_str()).c_str());
-                }
-            }
-
-            if (TestNet()) {
-                Send(hSocket, "JOIN #Ember0T\r");
-                Send(hSocket, "WHO #Ember0T\r");
-            } else {
-                // randomly join #Ember00-#Ember05
-                // int channel_number = GetRandInt(5);
-
-                // Channel number is always 0 for initial release
-                int channel_number = 0;
-                Send(hSocket, strprintf("JOIN #Ember%02d\r", channel_number).c_str());
-                Send(hSocket, strprintf("WHO #Ember%02d\r", channel_number).c_str());
-            }
-
-            int64 nStart = GetTime();
-            string strLine;
-            strLine.reserve(10000);
-            while (!ShutdownRequested() && RecvLineIRC(hSocket, strLine)) {
-                if (strLine.empty() || strLine.size() > 900 || strLine[0] != ':')
-                    continue;
-
-                vector<string> vWords;
-                ParseString(strLine, ' ', vWords);
-                if (vWords.size() < 2)
-                    continue;
-
-                char pszName[10000];
-                pszName[0] = '\0';
-
-                if (vWords[1] == "352" && vWords.size() >= 8) {
-                    // index 7 is limited to 16 characters
-                    // could get full length name at index 10, but would be different from join messages
-                    strlcpy(pszName, vWords[7].c_str(), sizeof(pszName));
-                    LogPrintf("IRC got who\n");
-                }
-
-                if (vWords[1] == "JOIN" && vWords[0].size() > 1) {
-                    // :username!username@50000007.F000000B.90000002.IP JOIN :#channelname
-                    strlcpy(pszName, vWords[0].c_str() + 1, sizeof(pszName));
-                    if (strchr(pszName, '!'))
-                        *strchr(pszName, '!') = '\0';
-                    LogPrintf("IRC got join\n");
-                }
-
-                if (pszName[0] == 'u') {
-                    CAddress addr;
-                    if (DecodeAddress(pszName, addr)) {
-                        addr.nTime = GetAdjustedTime();
-                        if (addrman.Add(addr, addrConnect, 51 * 60))
-                            LogPrintf("IRC got new address: %s\n", addr.ToString().c_str());
-                        nGotIRCAddresses++;
-                    } else {
-                        LogPrintf("IRC decode failed\n");
-                    }
-                }
-            }
-            closesocket(hSocket);
-            hSocket = INVALID_SOCKET;
-
-            if (GetTime() - nStart > 20 * 60) {
-                nErrorWait /= 3;
-                nRetryWait /= 3;
-            }
-
-            nRetryWait = nRetryWait * 11 / 10;
-            if (!Wait(nRetryWait += 60)) {
-                return;
-            }
-        }
-    } catch (std::exception& e) {
-        PrintExceptionContinue(&e, "ThreadIRCSeed()");
-    } catch (...) {
-        PrintExceptionContinue(NULL, "ThreadIRCSeed()");
+    CService addrIRC("irc.lfnet.org", 7777, true);
+    if (addrIRC.IsValid()) {
+        addrConnect = addrIRC;
     }
-    LogPrintf("ThreadIRCSeed exited\n");
+
+    SOCKET hSocket;
+    if (!ConnectSocket(addrConnect, hSocket, 60*5)) {
+        LogPrintf("IRC connect failed\n");
+        nErrorWait = nErrorWait * 11 / 10;
+        if (Wait(nErrorWait += 60))
+            goto begin_irc;
+        else
+            return;
+    }
+
+    if (!RecvUntil(hSocket, "Found your hostname", "using your IP address instead", "Couldn't look up your hostname", "ignoring hostname")) {
+        closesocket(hSocket);
+        hSocket = INVALID_SOCKET;
+        nErrorWait = nErrorWait * 11 / 10;
+        if (Wait(nErrorWait += 60))
+            goto begin_irc;
+        else
+            return;
+    }
+
+    CNetAddr addrIPv4("1.2.3.4"); // arbitrary IPv4 address to make GetLocal prefer IPv4 addresses
+    CService addrLocal;
+    string strMyName;
+    // Don't use our IP as our nick if we're not listening
+    // or if it keeps failing because the nick is already in use.
+    if (!fNoListen && GetLocal(addrLocal, &addrIPv4) && nNameRetry<3)
+        strMyName = EncodeAddress(GetLocalAddress(&addrConnect));
+    if (strMyName == "")
+        strMyName = strprintf("x%llu", GetRand(1000000000));
+
+    Send(hSocket, strprintf("NICK %s\r", strMyName.c_str()).c_str());
+    Send(hSocket, strprintf("USER %s 8 * : %s\r", strMyName.c_str(), strMyName.c_str()).c_str());
+
+    int nRet = RecvUntil(hSocket, " 004 ", " 433 ");
+    if (nRet != 1)
+    {
+        closesocket(hSocket);
+        hSocket = INVALID_SOCKET;
+        if (nRet == 2) {
+            LogPrintf("IRC name already in use\n");
+            nNameRetry++;
+            Wait(10);
+            goto begin_irc;
+        }
+        nErrorWait = nErrorWait * 11 / 10;
+        if (Wait(nErrorWait += 60))
+            goto begin_irc;
+        else
+            return;
+    }
+    nNameRetry = 0;
+
+    boost::this_thread::interruption_point();
+    MilliSleep(500);
+    boost::this_thread::interruption_point();
+
+    // Get our external IP from the IRC server and re-nick before joining the channel
+    CNetAddr addrFromIRC;
+    if (GetIPFromIRC(hSocket, strMyName, addrFromIRC)) {
+        LogPrintf("GetIPFromIRC() returned %s\n", addrFromIRC.ToString().c_str());
+        // Don't use our IP as our nick if we're not listening
+        if (!fNoListen && addrFromIRC.IsRoutable()) {
+            // IRC lets you to re-nick
+            AddLocal(addrFromIRC, LOCAL_IRC);
+            strMyName = EncodeAddress(GetLocalAddress(&addrConnect));
+            Send(hSocket, strprintf("NICK %s\r", strMyName.c_str()).c_str());
+        }
+    }
+
+    if (TestNet()) {
+        Send(hSocket, "JOIN #Ember0T\r");
+        Send(hSocket, "WHO #Ember0T\r");
+    } else {
+        // randomly join #Ember00-#Ember05
+        // int channel_number = GetRandInt(5);
+
+        // Channel number is always 0 for initial release
+        int channel_number = 0;
+        Send(hSocket, strprintf("JOIN #Ember%02d\r", channel_number).c_str());
+        Send(hSocket, strprintf("WHO #Ember%02d\r", channel_number).c_str());
+    }
+
+    int64 nStart = GetTime();
+    string strLine;
+    strLine.reserve(10000);
+
+    while (RecvLineIRC(hSocket, strLine)) {
+
+    	boost::this_thread::interruption_point();
+
+        if (strLine.empty() || strLine.size() > 900 || strLine[0] != ':')
+            continue;
+
+        vector<string> vWords;
+        ParseString(strLine, ' ', vWords);
+        if (vWords.size() < 2)
+            continue;
+
+        char pszName[10000];
+        pszName[0] = '\0';
+
+        if (vWords[1] == "352" && vWords.size() >= 8) {
+            // index 7 is limited to 16 characters
+            // could get full length name at index 10, but would be different from join messages
+            strlcpy(pszName, vWords[7].c_str(), sizeof(pszName));
+            //LogPrintf("IRC got who\n");
+        }
+
+        if (vWords[1] == "JOIN" && vWords[0].size() > 1) {
+            // :username!username@50000007.F000000B.90000002.IP JOIN :#channelname
+            strlcpy(pszName, vWords[0].c_str() + 1, sizeof(pszName));
+            if (strchr(pszName, '!'))
+                *strchr(pszName, '!') = '\0';
+            //LogPrintf("IRC got join\n");
+        }
+
+        if (pszName[0] == 'u') {
+            CAddress addr;
+            if (DecodeAddress(pszName, addr)) {
+                addr.nTime = GetAdjustedTime();
+                if (addrman.Add(addr, addrConnect, 51 * 60))
+                    LogPrintf("IRC got new address: %s\n", addr.ToString().c_str());
+                nGotIRCAddresses++;
+            } else {
+                LogPrintf("IRC decode failed\n");
+            }
+        }
+    }
+    closesocket(hSocket);
+    hSocket = INVALID_SOCKET;
 }
 
 #ifdef TEST

@@ -128,7 +128,7 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles);
 bool CheckProofOfWork(uint256 hash, unsigned int nBits);
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake);
 int64_t GetProofOfWorkReward(int64_t nHeight, int64_t nFees);
-int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees);
+bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t &old_reward, uint160 &new_reward);
 bool IsInitialBlockDownload();
 std::string GetWarnings(std::string strFor);
 bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
@@ -388,10 +388,6 @@ public:
                        std::map<uint256, CTxIndex>& mapTestPool, const CDiskTxPos& posThisTx,
                        const CBlockIndex* pindexBlock, bool fBlock, bool fMiner, unsigned int flags = STANDARD_SCRIPT_VERIFY_FLAGS);
     bool CheckTransaction() const;
-    bool GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge) const {
-        return GetCoinAge(txdb, nCoinAge/*, NULL, NULL*/);
-    }
-    bool GetCoinAge(CTxDB& txdb, int64_t& nCoinAge/*, uint64_t *Coin, uint64_t *Age*/) const; // ppcoin: get transaction coin age
     const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
 };
 

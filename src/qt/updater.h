@@ -11,43 +11,52 @@ extern int latest_version;
 #include <QFile>
 #include <QFileInfo>
 #include <QList>
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
-#include <QNetworkReply>
 #include <QSslError>
 #include <QStringList>
 #include <QTimer>
 #include <QUrl>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
 
 #include <stdio.h>
 
 #include "qt/bitcoingui.h"
 
-//class QSslError;
+extern bool updating;
+extern char updating_to[16384];
 
-class DownloadManager: public QObject {
+void ThreadUpdater(BitcoinGUI *guiref_);
+
+class QSslError;
+class QSslConfiguration;
+
+class Download: public QObject {
     Q_OBJECT
     QNetworkAccessManager net_manager;
-    QList<QNetworkReply *> currentDownloads;
+    QNetworkReply * curr_dl;
+    QFile file;
+    std::string file_name;
 
 private:
 	BitcoinGUI *guiref;
+    QTimer *updater_timer;
 
 public:
-    DownloadManager(BitcoinGUI *guiref_);
-    virtual ~DownloadManager() {};
+    bool am_complete_trigger;
+    Download(BitcoinGUI *guiref_, QString url_string, std::string filename);
+    ~Download();
     QString saveFileName(const QUrl &url);
     bool saveToDisk(const QString &filename, QIODevice *data);
-    char* GetExeUrl(int version);
+    void ShowDL();
 
 public slots:
-    void dl(QString url_string);
     void on_error(QNetworkReply::NetworkError code);
     void on_finished(QNetworkReply *reply);
+    void on_ssl_errors(const QList<QSslError> &errors);
+    void on_ready_read();
     void Update();
-    void Updater();
     QUrl redirectUrl(const QUrl& possibleRedirectUrl, const QUrl& oldRedirectUrl) const;
-    //void sslErrors(const QList<QSslError> &errors);
 };
 
 #endif

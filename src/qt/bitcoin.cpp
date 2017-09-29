@@ -16,6 +16,7 @@
 #include "ui_interface.h"
 #include "paymentserver.h"
 #include "updater.h"
+#include "compat.h"
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
 #endif
@@ -167,9 +168,6 @@ int main(int argc, char *argv[])
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
     // Add Daemon config settings - Also gets us connected for initial launch (before config file takes effect)
-    //mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");
-    //mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");
-    //mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024");
 
     // Application identification (must be set before OptionsModel is initialized,
     // as it is used to locate QSettings)
@@ -291,9 +289,7 @@ int main(int argc, char *argv[])
                 QObject::connect(paymentServer, SIGNAL(receivedURI(QString)), &window, SLOT(handleURI(QString)));
                 QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
 
-                // Run updater to check for new versions
-				DownloadManager manager(guiref);
-
+                threadGroup.create_thread(boost::bind(&ThreadUpdater, guiref));
 
                 app.exec();
 
@@ -318,6 +314,31 @@ int main(int argc, char *argv[])
         handleRunawayException(&e);
     } catch (...) {
         handleRunawayException(NULL);
+    }
+
+    if (updating) {
+    	LogPrintf("updater: Starting new process with name: \"%s\"!\n", updating_to);
+		/* CreateProcess API initialization */
+		STARTUPINFOA siStartupInfo;
+		PROCESS_INFORMATION piProcessInfo;
+		memset(&siStartupInfo, 0, sizeof(siStartupInfo));
+		memset(&piProcessInfo, 0, sizeof(piProcessInfo));
+		siStartupInfo.cb = sizeof(siStartupInfo);
+
+		LogPrintf("updater: Restarting same named exe. I am dying immediately thereafter!\n");
+		LogPrintf("======================================================================\n");
+    	CreateProcessA(updating_to, // application name/path
+					NULL, // command line (optional)
+					NULL, // no process attributes (default)
+					NULL, // default security attributes
+					false,
+					CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_CONSOLE,
+					NULL, // default env
+					NULL, // default working dir
+					&siStartupInfo,
+					&piProcessInfo);
+		TerminateProcess(GetCurrentProcess(),0);
+		ExitProcess(0); // exit this process
     }
     return 0;
 }

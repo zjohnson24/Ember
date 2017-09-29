@@ -98,7 +98,7 @@ clean:
 	-rm -rf ios-x86/* ios-arm/*
 
 $(LIBRARY): $(LIBOBJECTS)
-	rm -f $@
+	-rm -f $@
 	$(AR) -rs $@ $(LIBOBJECTS)
 
 db_bench: db/db_bench.o $(LIBOBJECTS) $(TESTUTIL)
@@ -177,7 +177,7 @@ write_batch_test: db/write_batch_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) db/write_batch_test.o $(LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
 $(MEMENVLIBRARY) : $(MEMENVOBJECTS)
-	rm -f $@
+	-rm -f $@
 	$(AR) -rs $@ $(MEMENVOBJECTS)
 
 memenv_test : helpers/memenv/memenv_test.o $(MEMENVLIBRARY) $(LIBRARY) $(TESTHARNESS)
