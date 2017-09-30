@@ -6,6 +6,7 @@
 
 #include <inttypes.h>
 #include <string>
+#include <fstream>
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
 
