@@ -39,7 +39,8 @@ contains(RELEASE, 1) {
     # Mac: compile for maximum compatibility (10.7, 32-bit)
     macx:QMAKE_CXXFLAGS += -mmacosx-version-min=10.7 -arch x86_64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
 
-    !windows:!macx {
+    linux {
+        message(RELEASE=1)
         # Linux: static link
         LIBS += -Wl,-Bstatic
     }
@@ -83,6 +84,7 @@ contains(USE_UPNP, -) {
 
 # use: qmake "USE_DBUS=1" or qmake "USE_DBUS=0"
 linux:count(USE_DBUS, 0) {
+    message(USE_DBUS=1)
     USE_DBUS=1
 }
 contains(USE_DBUS, 1) {
@@ -451,13 +453,13 @@ LIBS += -lboost_system$$BOOST_LIB_SUFFIX -lboost_filesystem$$BOOST_LIB_SUFFIX -l
 windows:LIBS += -lboost_chrono$$BOOST_LIB_SUFFIX
 
 contains(RELEASE, 1) {
-    !windows:!macx {
+    linux {
         # Linux: turn dynamic linking back on for c/c++ runtime libraries
         LIBS += -Wl,-Bdynamic
     }
 }
 
-!windows:!macx {
+linux {
     DEFINES += LINUX
     LIBS += -lrt -ldl
 }
