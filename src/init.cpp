@@ -175,8 +175,8 @@ std::string HelpMessage()
     strUsage += "  -proxy=<ip:port>       " + _("Connect through SOCKS5 proxy") + "\n";
     strUsage += "  -tor=<ip:port>         " + _("Use proxy to reach tor hidden services (default: same as -proxy)") + "\n";
     //strUsage += "  -dns                   " + _("Allow DNS lookups for -addnode, -seednode and -connect") + "\n";
-    strUsage += "  -port=<port>           " + _("Listen for connections on <port> (default: 15714 or testnet: 25714)") + "\n";
-    strUsage += "  -maxconnections=<n>    " + _("Maintain at most <n> connections to peers (default: 125)") + "\n";
+    strUsage += "  -port=<port>           " + _("Listen for connections on <port> (default: 10024 or testnet: 10012)") + "\n";
+    strUsage += "  -maxconnections=<n>    " + _("Maintain at most <n> connections to peers (default: 4096)") + "\n";
     //strUsage += "  -addnode=<ip>          " + _("Add a node to connect to and attempt to keep the connection open") + "\n";
     //strUsage += "  -connect=<ip>          " + _("Connect only to the specified node(s)") + "\n";
     //strUsage += "  -seednode=<ip>         " + _("Connect to a node to retrieve peer addresses, and disconnect") + "\n";
@@ -229,7 +229,7 @@ std::string HelpMessage()
                                                 "solved instantly. This is intended for regression testing tools and app development.") + "\n";
     strUsage += "  -rpcuser=<user>        " + _("Username for JSON-RPC connections") + "\n";
     strUsage += "  -rpcpassword=<pw>      " + _("Password for JSON-RPC connections") + "\n";
-    strUsage += "  -rpcport=<port>        " + _("Listen for JSON-RPC connections on <port> (default: 15715 or testnet: 25715)") + "\n";
+    strUsage += "  -rpcport=<port>        " + _("Listen for JSON-RPC connections on <port> (default: 10022 or testnet: 10018)") + "\n";
     strUsage += "  -rpcallowip=<ip>       " + _("Allow JSON-RPC connections from specified IP address") + "\n";
     if (!fHaveGUI)
     {
@@ -874,11 +874,11 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     //threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "updater", &ThreadUpdater));
 
-    if (!IsLimited(NET_IPV4) && 					  // Connect to IRC if we won't use IPv4 connections and
-   		(!mapArgs.count("-connect") || !fNoListen) && //  if (we make outbound connections or accept inbound ones) and
-    	GetBoolArg("-irc", true)) {					  //  if IRC is enabled.
-    	threadGroup.create_thread(boost::bind(&LoopForever<void (*)()>, "irc", &ThreadIRCSeed, 1000*60*20));
-    }
+    if (IsLimited(NET_IPV4)) { goto no_irc; } // Don't connect to IRC if we won't use IPv4 connections.
+    if (mapArgs.count("-connect") && fNoListen) { goto no_irc; } // ... or if we won't make outbound connections and won't accept inbound ones.
+    if (!GetBoolArg("-irc", true)) { goto no_irc; } // ... or if IRC is not enabled.
+    threadGroup.create_thread(boost::bind(&LoopForever<void (*)()>, "irc", &ThreadIRCSeed, 1000*60*20));
+no_irc:
 
     return !fRequestShutdown;
 }

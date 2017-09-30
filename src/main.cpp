@@ -6,6 +6,8 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/lexical_cast.hpp>
+#include <cmath>
 
 #include "alert.h"
 #include "chainparams.h"
@@ -17,6 +19,8 @@
 #include "txdb.h"
 #include "txmempool.h"
 #include "ui_interface.h"
+#include "util.h"
+#include "univalue.h"
 
 using namespace std;
 using namespace boost;
@@ -75,6 +79,8 @@ CScript COINBASE_FLAGS;
 const string strMessageMagic = "Ember Signed Message:\n";
 
 extern enum Checkpoints::CPMode CheckpointsMode;
+
+const double E = std::exp(1.0);
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -989,19 +995,24 @@ float lerp(double a, double b, double f) {
     return (a * (1.0 - f)) + (b * f);
 }
 
-//                             271828182845904523536
+
+//                                     2718281828459
 // 1461501637330902918203684832716283019655932542976
 //                                  COIN   100000000
-//                             100000000000000000000
-//                             100000000000000000000
+//                                         * 10000 =
+//                                     1000000000000
+#define E_AMT (1000000000000LL)
+#define TO_E_AMT_FROM_COIN(x) ((x)*10000)
 
-#define TO_E_FROM_COIN(x) ((x)*1000000000000)
+
 CBigNum CoinCCInterest(CBigNum P, double r, double t) {
-    CBigNum e(16989261427869032721ULL);
-    e = e * CBigNum(16);
-    P = P * e;
-    r = pow(t, r);
-    return CBigNum(0);
+    int64_t amount;
+    r = pow(E, r*t);
+    std::string r_str = boost::lexical_cast<std::string>(r);
+    if (!ParseFixedPoint(r_str, 12, &amount))
+        LogPrint("coinage", "Invalid amount! r_str: %s (P=%s r=%d t=%d)\n", r_str, P, r, t);
+    P = P * CBigNum(amount);
+    return P;
 }
 
 // miner's coin stake reward based on coin age spent (coin-days)

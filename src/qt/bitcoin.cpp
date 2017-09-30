@@ -123,8 +123,7 @@ void DebugMessageHandler(QtMsgType type, const QMessageLogContext& context, cons
 #endif
 
 #ifndef BITCOIN_QT_TEST
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     fHaveGUI = true;
 
     // Command-line options take precedence:
@@ -338,7 +337,6 @@ int main(int argc, char *argv[])
 					&siStartupInfo,
 					&piProcessInfo);
 		TerminateProcess(GetCurrentProcess(),0);
-		ExitProcess(0); // exit this process
     }
     return 0;
 }

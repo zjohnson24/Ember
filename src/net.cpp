@@ -27,7 +27,7 @@
 using namespace std;
 using namespace boost;
 
-static const int MAX_OUTBOUND_CONNECTIONS = 4096;
+static const int MAX_OUTBOUND_CONNECTIONS = 2048;
 
 bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 
@@ -1086,8 +1086,10 @@ void ThreadOpenConnections()
         for (int64_t nLoop = 0;; nLoop++)
         {
             ProcessOneShot();
+            boost::this_thread::interruption_point();
             BOOST_FOREACH(string strAddr, mapMultiArgs["-connect"])
             {
+            	boost::this_thread::interruption_point();
                 CAddress addr;
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++) {
@@ -1124,6 +1126,7 @@ void ThreadOpenConnections()
         // Choose an address to connect to based on most recently seen
         //
         CAddress addrConnect;
+        boost::this_thread::interruption_point();
 
         // Only connect out to one peer per network group (/16 for IPv4).
         // Do this here so we don't have to critsect vNodes inside mapAddresses critsect.
@@ -1132,6 +1135,7 @@ void ThreadOpenConnections()
         {
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes) {
+            	boost::this_thread::interruption_point();
                 if (!pnode->fInbound) {
                     setConnected.insert(pnode->addr.GetGroup());
                     nOutbound++;
@@ -1150,11 +1154,11 @@ void ThreadOpenConnections()
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr))
                 break;
 
-            // If we didn't find an appropriate destination after trying 512 addresses fetched from addrman,
+            // If we didn't find an appropriate destination after trying 32 addresses fetched from addrman,
             // stop this loop, and let the outer loop run again (which sleeps, adds seed nodes, recalculates
             // already-connected network ranges, ...) before trying new addrman addresses.
             nTries++;
-            if (nTries > 512) {
+            if (nTries > 32) {
                 break;
             }
 
@@ -1162,13 +1166,13 @@ void ThreadOpenConnections()
                 continue;
             }
 
-            // only consider very recently tried nodes after 30 failed attempts
-            if (nANow - addr.nLastTry < 600 && nTries < 30) {
+            // only consider very recently tried nodes after 3 failed attempts
+            if (nANow - addr.nLastTry < 600 && nTries < 3) {
                 continue;
             }
 
-            // do not allow non-default ports, unless after 50 invalid addresses selected already
-            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50) {
+            // do not allow non-default ports, unless after 32 invalid addresses selected already
+            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 32) {
                 continue;
             }
 
@@ -1176,7 +1180,10 @@ void ThreadOpenConnections()
             break;
         }
 
+        boost::this_thread::interruption_point();
+
         if (addrConnect.IsValid()) {
+        	boost::this_thread::interruption_point();
             OpenNetworkConnection(addrConnect, &grant);
         }
     }
