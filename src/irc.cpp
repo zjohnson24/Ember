@@ -12,6 +12,7 @@
 #include <stdint.h>
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
+#include <chrono>
 
 size_t strlcpy(char *dst, const char *src, size_t size) {
 	size_t srclen;
@@ -60,7 +61,7 @@ bool RecvIRCLine(SOCKET hSocket, string& strLine) {
                 if (nErr == WSAEMSGSIZE)
                     continue;
                 if (nErr == WSAEWOULDBLOCK || nErr == WSAEINTR || nErr == WSAEINPROGRESS) {
-                    MilliSleep(40);
+                    this_thread::sleep_for(boost::chrono::milliseconds(10));
                     continue;
                 }
             }
@@ -170,7 +171,7 @@ bool Wait(int nSeconds) {
         if (ShutdownRequested()) {
             return false;
         }
-        MilliSleep(1000);
+        this_thread::sleep_for(boost::chrono::seconds(1));
     }
     return true;
 }
@@ -300,7 +301,7 @@ begin_irc:
     nNameRetry = 0;
 
     boost::this_thread::interruption_point();
-    MilliSleep(500);
+    this_thread::sleep_for(boost::chrono::milliseconds(500));
     boost::this_thread::interruption_point();
 
     // Get our external IP from the IRC server and re-nick before joining the channel
