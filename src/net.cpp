@@ -127,6 +127,7 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer)
 }
 
 bool CNode::RecvMsg(char *buf, int32_t buf_len) {
+begin_again:
 	uint32_t buf_len_ = (buf_len = recv(hSocket, buf, buf_len, MSG_DONTWAIT));
 	if (buf_len < 0) {
 		int nErr = WSAGetLastError();
@@ -136,8 +137,12 @@ bool CNode::RecvMsg(char *buf, int32_t buf_len) {
 				LogPrint("net", "Socket recv failed: (%d)\n", nErr);
 			}
 			CloseSocketDisconnect();
+            return false;
 		}
-		return false;
+		if (nErr != WSAEMSGSIZE) {
+			MilliSleep(10);
+		}
+		goto begin_again;
 	} else if (buf_len == 0) {
 		// socket closed
 		if (!fDisconnect) {
