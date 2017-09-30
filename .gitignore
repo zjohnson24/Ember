@@ -22,5 +22,7 @@ qrc_*.cpp
 #mac specific
 .DS_Store
 build
+.qmake.stash
+Ember-Qt.app*
 
 !src/leveldb/Makefile
