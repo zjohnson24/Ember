@@ -9,6 +9,7 @@
 #include "main.h"
 #include "addrman.h"
 #include "ui_interface.h"
+#include "init.h"
 
 #ifdef WIN32
 #include <string.h>
@@ -1103,14 +1104,22 @@ void ThreadOpenConnections()
 
     // Initiate network connections
     int64_t nStart = GetTime();
-    while (true) {
+    while (!ShutdownRequested()) {
     	boost::this_thread::interruption_point();
+
         ProcessOneShot();
+
         boost::this_thread::interruption_point();
+
         MilliSleep(500);
+
         boost::this_thread::interruption_point();
+
         CSemaphoreGrant grant(*semOutbound);
+
         boost::this_thread::interruption_point();
+
+
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
         if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
@@ -1131,6 +1140,7 @@ void ThreadOpenConnections()
         // Only connect out to one peer per network group (/16 for IPv4).
         // Do this here so we don't have to critsect vNodes inside mapAddresses critsect.
         int nOutbound = 0;
+        int nOutboundRelevant = 0;
         set<vector<unsigned char> > setConnected;
         {
             LOCK(cs_vNodes);
@@ -1146,7 +1156,7 @@ void ThreadOpenConnections()
         int64_t nANow = GetAdjustedTime();
 
         int nTries = 0;
-        while (true) {
+        while (!ShutdownRequested()) {
         	boost::this_thread::interruption_point();
             CAddress addr = addrman.Select();
 
@@ -1154,11 +1164,11 @@ void ThreadOpenConnections()
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr))
                 break;
 
-            // If we didn't find an appropriate destination after trying 32 addresses fetched from addrman,
+            // If we didn't find an appropriate destination after trying 100 addresses fetched from addrman,
             // stop this loop, and let the outer loop run again (which sleeps, adds seed nodes, recalculates
             // already-connected network ranges, ...) before trying new addrman addresses.
             nTries++;
-            if (nTries > 32) {
+            if (nTries > 100) {
                 break;
             }
 
@@ -1166,8 +1176,8 @@ void ThreadOpenConnections()
                 continue;
             }
 
-            // only consider very recently tried nodes after 3 failed attempts
-            if (nANow - addr.nLastTry < 600 && nTries < 3) {
+            // only consider very recently tried nodes after 30 failed attempts
+            if (nANow - addr.nLastTry < 600 && nTries < 30) {
                 continue;
             }
 
@@ -1180,10 +1190,7 @@ void ThreadOpenConnections()
             break;
         }
 
-        boost::this_thread::interruption_point();
-
         if (addrConnect.IsValid()) {
-        	boost::this_thread::interruption_point();
             OpenNetworkConnection(addrConnect, &grant);
         }
     }
