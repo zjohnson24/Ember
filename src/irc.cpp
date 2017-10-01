@@ -61,7 +61,7 @@ bool RecvIRCLine(SOCKET hSocket, string& strLine) {
                 if (nErr == WSAEMSGSIZE)
                     continue;
                 if (nErr == WSAEWOULDBLOCK || nErr == WSAEINTR || nErr == WSAEINPROGRESS) {
-                    this_thread::sleep_for(boost::chrono::milliseconds(10));
+                    MilliSleep(40);
                     continue;
                 }
             }
@@ -171,7 +171,7 @@ bool Wait(int nSeconds) {
         if (ShutdownRequested()) {
             return false;
         }
-        this_thread::sleep_for(boost::chrono::seconds(1));
+        MilliSleep(1000);
     }
     return true;
 }
@@ -301,7 +301,7 @@ begin_irc:
     nNameRetry = 0;
 
     boost::this_thread::interruption_point();
-    this_thread::sleep_for(boost::chrono::milliseconds(500));
+    MilliSleep(500);
     boost::this_thread::interruption_point();
 
     // Get our external IP from the IRC server and re-nick before joining the channel
