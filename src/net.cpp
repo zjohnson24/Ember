@@ -126,7 +126,7 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer)
 }
 
 bool CNode::RecvMsg(char *buf, int32_t buf_len) {
-	uint32_t buf_len_ = (buf_len = recv(hSocket, buf, buf_len, MSG_DONTWAIT));
+    int32_t buf_len_ = (buf_len = recv(hSocket, buf, buf_len, MSG_DONTWAIT));
 	if (buf_len < 0) {
 		int nErr = WSAGetLastError();
 		// socket error
@@ -774,24 +774,30 @@ void ThreadSocketHandler()
                 int nErr = WSAGetLastError();
                 if (nErr != WSAEWOULDBLOCK)
                     LogPrintf("socket error accept failed: %d\n", nErr);
+                return;
             }
-            else if (nInbound >= GetArg("-maxconnections", 255) - MAX_OUTBOUND_CONNECTIONS)
-            {
-                closesocket(hSocket);
-            } else if (CNode::IsBanned(addr)) {
+
+            if (CNode::IsBanned(addr)) {
                 LogPrintf("connection from %s dropped (banned)\n", addr.ToString());
                 closesocket(hSocket);
-            } else {
-                LogPrint("net", "accepted connection %s\n", addr.ToString());
-                CNode* pnode = new CNode(hSocket, addr, "", true);
-                pnode->AddRef();
-                {
-                    LOCK(cs_vNodes);
-                    vNodes.push_back(pnode);
-                }
+                return;
+            }
+
+            if (nInbound >= GetArg("-maxconnections", 255) - MAX_OUTBOUND_CONNECTIONS)
+            {
+                LogPrint("net", "connection dropped");
+                closesocket(hSocket);
+                return;
+            }
+
+            LogPrint("net", "accepted connection %s\n", addr.ToString());
+            CNode* pnode = new CNode(hSocket, addr, "", true);
+            pnode->AddRef();
+            {
+                LOCK(cs_vNodes);
+                vNodes.push_back(pnode);
             }
         }
-
 
         //
         // Service each socket
@@ -824,7 +830,7 @@ void ThreadSocketHandler()
                     }
                     else {
                         char tmp_buf[0x10000];
-                        pnode->RecvMsg(tmp_buf, sizeof(tmp_buf));
+                        pnode->RecvMsg(&tmp_buf[0], sizeof(tmp_buf));
                     }
                 }
             }
