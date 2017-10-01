@@ -126,7 +126,6 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer)
 }
 
 bool CNode::RecvMsg(char *buf, int32_t buf_len) {
-<<<<<<< HEAD
 	uint32_t buf_len_ = (buf_len = recv(hSocket, buf, buf_len, MSG_DONTWAIT));
 	if (buf_len < 0) {
 		int nErr = WSAGetLastError();
@@ -140,19 +139,6 @@ bool CNode::RecvMsg(char *buf, int32_t buf_len) {
 		return false;
 	} else if (buf_len == 0) {
 		// socket closed
-=======
-    int32_t buf_len_ = (buf_len = recv(hSocket, buf, buf_len, MSG_DONTWAIT));
-	if (buf_len < 0) { // socket error
-		int nErr = WSAGetLastError();
-        if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
-            if (!fDisconnect && nErr != WSAECONNRESET) {
-				LogPrint("net", "Socket recv failed: (%d)\n", nErr);
-			}
-			CloseSocketDisconnect();
-        }
-		return false;
-	} else if (buf_len == 0) { // socket closed
->>>>>>> dev2
 		if (!fDisconnect) {
 			LogPrint("net", "Socket closed properly\n");
 		}
@@ -837,11 +823,7 @@ void ThreadSocketHandler()
                     }
                     else {
                         char tmp_buf[0x10000];
-<<<<<<< HEAD
                         pnode->RecvMsg(tmp_buf, sizeof(tmp_buf));
-=======
-                        pnode->RecvMsg(&(tmp_buf[0]), 0x10000);
->>>>>>> dev2
                     }
                 }
             }
@@ -1100,29 +1082,18 @@ void static ProcessOneShot()
 
 void ThreadOpenConnections() {
     // Connect to specific addresses
-<<<<<<< HEAD
     if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
     {
         for (int64_t nLoop = 0;; nLoop++)
         {
-=======
-    if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0) {
-        for (int64_t nLoop = 0;; nLoop++) {
-            boost::this_thread::interruption_point();
->>>>>>> dev2
             ProcessOneShot();
             BOOST_FOREACH(string strAddr, mapMultiArgs["-connect"])
             {
                 CAddress addr;
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
-<<<<<<< HEAD
                 for (int i = 0; i < 10 && i < nLoop; i++)
                 {
                     MilliSleep(50);
-=======
-                for (int i = 0; i < 10 && i < nLoop; i++) {
-                    MilliSleep(500);
->>>>>>> dev2
                 }
             }
             MilliSleep(50);
@@ -1131,7 +1102,6 @@ void ThreadOpenConnections() {
 
     // Initiate network connections
     int64_t nStart = GetTime();
-<<<<<<< HEAD
     while (true) {
         ProcessOneShot();
 
@@ -1139,12 +1109,6 @@ void ThreadOpenConnections() {
 
         CSemaphoreGrant grant(*semOutbound);
         boost::this_thread::interruption_point();
-=======
-    while (!ShutdownRequested()) {
-    	boost::this_thread::interruption_point();
-        ProcessOneShot();
-        CSemaphoreGrant grant(*semOutbound);
->>>>>>> dev2
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
         if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
@@ -1178,11 +1142,7 @@ void ThreadOpenConnections() {
         int64_t nANow = GetAdjustedTime();
 
         int nTries = 0;
-<<<<<<< HEAD
         while (true) {
-=======
-        while (!ShutdownRequested()) {
->>>>>>> dev2
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
@@ -1241,11 +1201,7 @@ void ThreadOpenAddedConnections()
                 CAddress addr;
                 CSemaphoreGrant grant(*semOutbound);
                 OpenNetworkConnection(addr, &grant, strAddNode.c_str());
-<<<<<<< HEAD
                 MilliSleep(25);
-=======
-                MilliSleep(500);
->>>>>>> dev2
             }
             MilliSleep(5*1000); // Retry every 5 seconds
         }
@@ -1292,15 +1248,9 @@ void ThreadOpenAddedConnections()
         {
             CSemaphoreGrant grant(*semOutbound);
             OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
-<<<<<<< HEAD
             MilliSleep(25);
         }
         MilliSleep(5*1000); // Retry every 5 seconds
-=======
-            MilliSleep(500);
-        }
-        MilliSleep(2*60*1000); // Retry every 2 minutes
->>>>>>> dev2
     }
 }
 
