@@ -13,11 +13,19 @@ INCLUDEPATHS= \
  -I"$(CURDIR)" \
  -I"$(CURDIR)"/obj \
  -I"$(DEPSDIR)/include" \
- -I"$(DEPSDIR)/include/db48"
+ -I"$(DEPSDIR)/include/db48" \
+ -I"/usr/local/Cellar/miniupnpc/2.0.20170509/include" \
+ -I"/usr/local/Cellar/openssl/1.0.2l/include" \
+ -I"/usr/local/Cellar/berkeley-db@4/4.8.30/include" \
+ -I"/usr/local/Cellar/boost/1.65.1/include"
 
 LIBPATHS= \
  -L"$(DEPSDIR)/lib" \
- -L"$(DEPSDIR)/lib/db48"
+ -L"$(DEPSDIR)/lib/db48" \
+ -L"/usr/local/Cellar/miniupnpc/2.0.20170509/lib" \
+ -L"/usr/local/Cellar/openssl/1.0.2l/lib" \
+ -L"/usr/local/Cellar/berkeley-db@4/4.8.30/lib" \
+ -L"/usr/local/Cellar/boost/1.65.1/lib"
 
 USE_UPNP:=1
 USE_WALLET:=1
@@ -86,6 +94,7 @@ OBJS= \
     obj/rpcrawtransaction.o \
     obj/timedata.o \
     obj/script.o \
+    obj/scrypt-arm.o \
     obj/sync.o \
     obj/txmempool.o \
     obj/util.o \
@@ -154,6 +163,15 @@ obj/build.h: FORCE
 version.cpp: obj/build.h
 DEFS += -DHAVE_BUILD_INFO
 
+obj/scrypt-x86.o: scrypt-x86.S
+	$(CXX) -c $(xCXXFLAGS) -MMD -o $@ $<
+
+obj/scrypt-x86_64.o: scrypt-x86_64.S
+	$(CXX) -c $(xCXXFLAGS) -MMD -o $@ $<
+
+obj/scrypt-arm.o: scrypt-arm.S
+	$(CXX) -c $(xCXXFLAGS) -MMD -o $@ $<
+
 obj/%.o: %.cpp
 	$(CXX) -c $(CFLAGS) -MMD -MF $(@:%.o=%.d) -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -167,12 +185,6 @@ obj/%.o: %.c
 	  sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	      -e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	  rm -f $(@:%.o=%.d)
-
-obj/scrypt-x86.o: scrypt-x86.S
-	$(CXX) -c $(xCXXFLAGS) -MMD -o $@ $<
-
-obj/scrypt-x86_64.o: scrypt-x86_64.S
-	$(CXX) -c $(xCXXFLAGS) -MMD -o $@ $<
 
 Emberd: $(OBJS:obj/%=obj/%)
 	$(CXX) $(CFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
