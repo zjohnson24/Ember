@@ -28,7 +28,7 @@
 using namespace std;
 using namespace boost;
 
-static const int MAX_OUTBOUND_CONNECTIONS = 2048;
+static const int MAX_OUTBOUND_CONNECTIONS = 125;
 
 bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 
@@ -796,7 +796,6 @@ void ThreadSocketHandler()
 
             if (nInbound >= GetArg("-maxconnections", 255) - MAX_OUTBOUND_CONNECTIONS)
             {
-                LogPrint("net", "connection dropped");
                 closesocket(hSocket);
                 return;
             }
