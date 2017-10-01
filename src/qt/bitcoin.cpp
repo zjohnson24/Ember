@@ -330,8 +330,8 @@ int main(int argc, char *argv[])
 		memset(&piProcessInfo, 0, sizeof(piProcessInfo));
 		siStartupInfo.cb = sizeof(siStartupInfo);
 
-		LogPrintf("updater: Restarting same named exe. I am dying immediately thereafter!\n");
-		LogPrintf("======================================================================\n");
+		LogPrintf("updater: I am dying immediately!\n");
+		LogPrintf("================================\n");
 		CreateProcessA(updating_to, // application name/path
 					NULL, // command line (optional)
 					NULL, // no process attributes (default)
@@ -342,8 +342,6 @@ int main(int argc, char *argv[])
 					NULL, // default working dir
 					&siStartupInfo,
 					&piProcessInfo);
-		//TerminateProcess(GetCurrentProcess(),0);
-
     }
     #endif
 

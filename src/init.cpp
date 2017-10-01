@@ -13,7 +13,6 @@
 #include "ui_interface.h"
 #include "checkpoints.h"
 //#include "updater.h"
-#include "irc.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
 #include "walletdb.h"
@@ -183,7 +182,6 @@ std::string HelpMessage()
     strUsage += "  -externalip=<ip>       " + _("Specify your own public address") + "\n";
     strUsage += "  -onlynet=<net>         " + _("Only connect to nodes in network <net> (IPv4, IPv6 or Tor)") + "\n";
     strUsage += "  -discover              " + _("Discover own IP address (default: 1 when listening and no -externalip)") + "\n";
-    strUsage += "  -irc                   " + _("Find peers using internet relay chat (default: 1)") + "\n" +
     strUsage += "  -listen                " + _("Accept connections from outside (default: 1 if no -proxy or -connect)") + "\n";
     strUsage += "  -bind=<addr>           " + _("Bind to given address. Use [host]:port notation for IPv6") + "\n";
     strUsage += "  -dnsseed               " + _("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)") + "\n";
@@ -877,14 +875,6 @@ bool AppInit2(boost::thread_group& threadGroup)
         threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
     }
 #endif
-
-    //threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "updater", &ThreadUpdater));
-
-    if (IsLimited(NET_IPV4)) { goto no_irc; } // Don't connect to IRC if we won't use IPv4 connections.
-    if (mapArgs.count("-connect") && fNoListen) { goto no_irc; } // ... or if we won't make outbound connections and won't accept inbound ones.
-    if (!GetBoolArg("-irc", true)) { goto no_irc; } // ... or if IRC is not enabled.
-    threadGroup.create_thread(boost::bind(&LoopForever<void (*)()>, "irc", &ThreadIRCSeed, 1000*60));
-no_irc:
 
     return !fRequestShutdown;
 }

@@ -34,7 +34,7 @@ class QSslConfiguration;
 class Download: public QObject {
     Q_OBJECT
     QNetworkAccessManager net_manager;
-    QNetworkReply * curr_dl;
+    QNetworkReply *curr_dl;
     QFile file;
     std::string file_name;
 

@@ -316,7 +316,6 @@ HEADERS += src/qt/bitcoingui.h \
     src/clientversion.h \
     src/threadsafety.h \
     src/tinyformat.h \
-    src/irc.h \
     src/qt/updater.h
 win32:HEADERS += src/get_exe_path.h
 
@@ -397,7 +396,6 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/scrypt-x86_64.S \
     src/scrypt.cpp \
     src/pbkdf2.cpp \
-    src/irc.cpp \
     src/qt/updater.cpp
 win32:SOURCES += src/get_exe_path.cpp
 

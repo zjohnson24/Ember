@@ -65,7 +65,6 @@ enum
     LOCAL_IF,     // address a local interface listens on
     LOCAL_BIND,   // address explicit bound to
     LOCAL_UPNP,   // address reported by UPnP
-    LOCAL_IRC,    // address gotten from IRC
     LOCAL_DNSSEED,// address gotten from dns seed
     LOCAL_MANUAL, // address explicitly specified (-externalip=)
 
