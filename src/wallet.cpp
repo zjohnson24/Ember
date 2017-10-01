@@ -1978,10 +1978,16 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     // Calculate coin age reward
     {
     	CTxDB txdb("r");
-        int64_t nCalculatedStakeReward;
-        CBigNum nNewCalculatedStakeReward;
-        GetProofOfStakeReward(txNew, txdb, nFees, nCalculatedStakeReward, nNewCalculatedStakeReward);
-        nCredit += nCalculatedStakeReward; // nNewCalculatedStakeReward.GetLow64()
+        // int64_t nCalculatedStakeReward;
+        // CBigNum nNewCalculatedStakeReward;
+        uint64_t nCoinAge;
+        // GetProofOfStakeReward(txNew, txdb, nFees, nCalculatedStakeReward, nNewCalculatedStakeReward);
+        int64_t nReward = GetProofOfStakeReward(nCoinAge, nFees);
+        if (nReward <= 0)
+            return false;
+
+        nCredit += nReward;
+        // nCredit += nCalculatedStakeReward; // nNewCalculatedStakeReward.GetLow64()
     }
 
     // Set output amount

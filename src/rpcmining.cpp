@@ -71,42 +71,46 @@ Value getstakesubsidy(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
     }
 
-    int64_t nCalculatedStakeReward;
-    CBigNum nNewCalculatedStakeReward;
+    // int64_t nCalculatedStakeReward;
+    // CBigNum nNewCalculatedStakeReward;
     CTxDB txdb("r");
-    if (!GetProofOfStakeReward(tx, txdb, 0, nCalculatedStakeReward, nNewCalculatedStakeReward))
-        throw JSONRPCError(RPC_MISC_ERROR, "GetProofOfStakeReward failed");
+    // if (!GetProofOfStakeReward(tx, txdb, 0, nCalculatedStakeReward, nNewCalculatedStakeReward))
+    //     throw JSONRPCError(RPC_MISC_ERROR, "GetProofOfStakeReward failed");
+    uint64_t nCoinAge;
+    if (!tx.GetCoinAge(txdb, nCoinAge))
+        throw JSONRPCError(RPC_MISC_ERROR, "GetCoinAge failed");
 
-    return (uint64_t)nCalculatedStakeReward;
+    // return (uint64_t)nCalculatedStakeReward;
+    return (uint64_t)GetProofOfStakeReward(nCoinAge, 0);
 }
 
-Value getstakesubsidynew(const Array& params, bool fHelp)
-{
-    if (fHelp || params.size() != 1)
-        throw runtime_error(
-            "getstakesubsidynew <hex string>\n"
-            "Returns proof-of-stake newsubsidy value for the specified coinstake.");
+// Value getstakesubsidynew(const Array& params, bool fHelp)
+// {
+//     if (fHelp || params.size() != 1)
+//         throw runtime_error(
+//             "getstakesubsidynew <hex string>\n"
+//             "Returns proof-of-stake newsubsidy value for the specified coinstake.");
 
-    RPCTypeCheck(params, list_of(str_type));
+//     RPCTypeCheck(params, list_of(str_type));
 
-    vector<unsigned char> txData(ParseHex(params[0].get_str()));
-    CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
-    CTransaction tx;
-    try {
-        ssData >> tx;
-    }
-    catch (std::exception &e) {
-        throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
-    }
+//     vector<unsigned char> txData(ParseHex(params[0].get_str()));
+//     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
+//     CTransaction tx;
+//     try {
+//         ssData >> tx;
+//     }
+//     catch (std::exception &e) {
+//         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
+//     }
 
-    int64_t nCalculatedStakeReward;
-    CBigNum nNewCalculatedStakeReward;
-    CTxDB txdb("r");
-    if (!GetProofOfStakeReward(tx, txdb, 0, nCalculatedStakeReward, nNewCalculatedStakeReward))
-        throw JSONRPCError(RPC_MISC_ERROR, "GetProofOfStakeReward failed");
+//     int64_t nCalculatedStakeReward;
+//     CBigNum nNewCalculatedStakeReward;
+//     CTxDB txdb("r");
+//     if (!GetProofOfStakeReward(tx, txdb, 0, nCalculatedStakeReward, nNewCalculatedStakeReward))
+//         throw JSONRPCError(RPC_MISC_ERROR, "GetProofOfStakeReward failed");
 
-    return nNewCalculatedStakeReward.getuint64();
-}
+//     return nNewCalculatedStakeReward.getuint64();
+// }
 
 Value getmininginfo(const Array& params, bool fHelp)
 {
