@@ -64,7 +64,6 @@ Download::Download(BitcoinGUI *guiref_, QString url_string, std::string filename
 }
 
 Download::~Download() {
-	delete updater_timer;
 }
 
 
@@ -180,30 +179,30 @@ char* GetExeUrl(int version) {
 
 void ThreadUpdater(BitcoinGUI *guiref_) {
 	#ifdef _WIN32
-	Download ver_dl(guiref_, "https://www.0xify.com/static/emb/win/x86/_latest_version.txt", TmpPath.string()+"Ember-latest-version.txt");
-	while (!ver_dl.am_complete_trigger) {
-		MilliSleep(30);
-	}
-	std::string latest_version_str = slurp(TmpPath.string()+"Ember-latest-version.txt");
-	LogPrintf("updater: Latest version string of file contents: \"%s\"\n", latest_version_str);
+    Download ver_dl(guiref_, "https://www.0xify.com/static/emb/win/x86/_latest_version.txt", TmpPath.string()+"Ember-latest-version.txt");
+    while (!ver_dl.am_complete_trigger) {
+    	MilliSleep(5*1000);
+    }
+    std::string latest_version_str = slurp(TmpPath.string()+"Ember-latest-version.txt");
+    LogPrintf("updater: Latest version string of file contents: \"%s\"\n", latest_version_str);
 	latest_version = std::stoi(latest_version_str);
 	LogPrintf("updater: Here is the latest version: %d.\n", latest_version);
 	if (latest_version >= 0) {
-		if (ready_to_update) {
-			LogPrintf("updater: Ready for upgrade process.\n");
-		} else if (CLIENT_VERSION < latest_version) { // When true, we've got an upgrade ready to dl, and we haven't already
-			LogPrintf("updater: Upgrade should be available on host...\n");
-			char *s = GetExeUrl(latest_version);
-			if (s == NULL) {
-				LogPrintf("updater: Problem with building the URL for latest version.\n");
-				return;
-			} else {
-				downloading_update = true;
-				Download dl(guiref_, s, TmpPath.string()+"Ember-qt.exe");
-				while (!dl.am_complete_trigger) {
-					MilliSleep(30);
-				}
-				LogPrintf("updater: Got updated version downloaded and primed.\n");
+        if (ready_to_update) {
+            LogPrintf("updater: Ready for upgrade process.\n");
+        } else if (CLIENT_VERSION < latest_version) { // When true, we've got an upgrade ready to dl, and we haven't already
+	  		LogPrintf("updater: Upgrade should be available on host...\n");
+	  		char *s = GetExeUrl(latest_version);
+	   		if (s == NULL) {
+	  			LogPrintf("updater: Problem with building the URL for latest version.\n");
+	   			return;
+	   		} else {
+	   			downloading_update = true;
+    			Download dl(guiref_, s, TmpPath.string()+"Ember-qt.exe");
+    			while (!dl.am_complete_trigger) {
+    				MilliSleep(5*1000);
+    			}
+    			LogPrintf("updater: Got updated version downloaded and primed.\n");
 				ready_to_update = true;
 				am_updated = false;
 				downloading_update = false;

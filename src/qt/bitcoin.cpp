@@ -168,10 +168,10 @@ int main(int argc, char *argv[])
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
     // Add Daemon config settings - Also gets us connected for initial launch (before config file takes effect)
-    //mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");  // abc - aws
-    //mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");  // abc - red
-    //mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024"); // abc - blue
-    //mapMultiArgs["-seednode"].push_back("seednode=51.15.198.252:10024");  // konez2k - vps
+    mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");  // abc - aws
+    mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");  // abc - red
+    mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024"); // abc - blue
+    mapMultiArgs["-seednode"].push_back("seednode=51.15.198.252:10024");  // konez2k - vps
 
     // Application identification (must be set before OptionsModel is initialized,
     // as it is used to locate QSettings)
@@ -235,94 +235,94 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	QSplashScreen splash(QPixmap(":/images/splash"), 0);
-	if (GetBoolArg("-splash", true) && !GetBoolArg("-min", false))
-	{
-		splash.show();
-		splashref = &splash;
-	}
+    QSplashScreen splash(QPixmap(":/images/splash"), 0);
+    if (GetBoolArg("-splash", true) && !GetBoolArg("-min", false))
+    {
+        splash.show();
+        splashref = &splash;
+    }
 
-	app.processEvents();
+    app.processEvents();
 
-	app.setQuitOnLastWindowClosed(false);
+    app.setQuitOnLastWindowClosed(false);
 
-	try
-	{
-		// Regenerate startup link, to fix links to old versions
-		if (GUIUtil::GetStartOnSystemStartup())
-			GUIUtil::SetStartOnSystemStartup(true);
+    try
+    {
+        // Regenerate startup link, to fix links to old versions
+        if (GUIUtil::GetStartOnSystemStartup())
+            GUIUtil::SetStartOnSystemStartup(true);
 
-		boost::thread_group threadGroup;
+        boost::thread_group threadGroup;
 
-		BitcoinGUI window;
-		guiref = &window;
+        BitcoinGUI window;
+        guiref = &window;
 
-		QTimer* pollShutdownTimer = new QTimer(guiref);
-		QObject::connect(pollShutdownTimer, SIGNAL(timeout()), guiref, SLOT(detectShutdown()));
-		pollShutdownTimer->start(200);
+        QTimer* pollShutdownTimer = new QTimer(guiref);
+        QObject::connect(pollShutdownTimer, SIGNAL(timeout()), guiref, SLOT(detectShutdown()));
+        pollShutdownTimer->start(200);
 
-		if(AppInit2(threadGroup))
-		{
-			{
-				// Put this in a block, so that the Model objects are cleaned up before
-				// calling Shutdown().
+        if(AppInit2(threadGroup))
+        {
+            {
+                // Put this in a block, so that the Model objects are cleaned up before
+                // calling Shutdown().
 
-				paymentServer->setOptionsModel(&optionsModel);
+                paymentServer->setOptionsModel(&optionsModel);
 
-				if (splashref)
-					splash.finish(&window);
+                if (splashref)
+                    splash.finish(&window);
 
-				ClientModel clientModel(&optionsModel);
-				WalletModel walletModel(pwalletMain, &optionsModel);
+                ClientModel clientModel(&optionsModel);
+                WalletModel walletModel(pwalletMain, &optionsModel);
 
-				window.setClientModel(&clientModel);
-				window.setWalletModel(&walletModel);
+                window.setClientModel(&clientModel);
+                window.setWalletModel(&walletModel);
 
-				// If -min option passed, start window minimized.
-				if(GetBoolArg("-min", false))
-				{
-					window.showMinimized();
-				}
-				else
-				{
-					window.show();
-				}
+                // If -min option passed, start window minimized.
+                if(GetBoolArg("-min", false))
+                {
+                    window.showMinimized();
+                }
+                else
+                {
+                    window.show();
+                }
 
-				// Now that initialization/startup is done, process any command-line
-				// bitcoin: URIs
-				QObject::connect(paymentServer, SIGNAL(receivedURI(QString)), &window, SLOT(handleURI(QString)));
-				QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
+                // Now that initialization/startup is done, process any command-line
+                // bitcoin: URIs
+                QObject::connect(paymentServer, SIGNAL(receivedURI(QString)), &window, SLOT(handleURI(QString)));
+                QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
 
-				threadGroup.create_thread(boost::bind(&ThreadUpdater, guiref));
+                threadGroup.create_thread(boost::bind(&ThreadUpdater, boost::ref(guiref)));
 
-				app.exec();
+                app.exec();
 
-				window.hide();
-				window.setClientModel(0);
-				window.setWalletModel(0);
-				guiref = 0;
-			}
-			// Shutdown the core and its threads, but don't exit Bitcoin-Qt here
-			threadGroup.interrupt_all();
-			threadGroup.join_all();
-			Shutdown();
-		}
-		else
-		{
-			threadGroup.interrupt_all();
-			threadGroup.join_all();
-			Shutdown();
-			return 1;
-		}
-	} catch (std::exception& e) {
-		handleRunawayException(&e);
-	} catch (...) {
-		handleRunawayException(NULL);
-	}
+                window.hide();
+                window.setClientModel(0);
+                window.setWalletModel(0);
+                guiref = 0;
+            }
+            // Shutdown the core and its threads, but don't exit Bitcoin-Qt here
+            threadGroup.interrupt_all();
+            threadGroup.join_all();
+            Shutdown();
+        }
+        else
+        {
+            threadGroup.interrupt_all();
+            threadGroup.join_all();
+            Shutdown();
+            return 1;
+        }
+    } catch (std::exception& e) {
+        handleRunawayException(&e);
+    } catch (...) {
+        handleRunawayException(NULL);
+    }
 
-	if (updating) {
-		#ifdef _WIN32
-		LogPrintf("updater: Starting new process with name: \"%s\"!\n", updating_to);
+    #ifdef _WIN32
+    if (updating) {
+    	LogPrintf("updater: Starting new process with name: \"%s\"!\n", updating_to);
 		/* CreateProcess API initialization */
 		STARTUPINFOA siStartupInfo;
 		PROCESS_INFORMATION piProcessInfo;
@@ -342,11 +342,11 @@ int main(int argc, char *argv[])
 					NULL, // default working dir
 					&siStartupInfo,
 					&piProcessInfo);
-		TerminateProcess(GetCurrentProcess(),0);
+		//TerminateProcess(GetCurrentProcess(),0);
 
-		ExitProcess(0); // exit this process
-		#endif
     }
+    #endif
+
     return 0;
 }
 #endif // BITCOIN_QT_TEST

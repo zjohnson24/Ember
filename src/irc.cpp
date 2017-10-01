@@ -61,7 +61,7 @@ bool RecvIRCLine(SOCKET hSocket, string& strLine) {
                 if (nErr == WSAEMSGSIZE)
                     continue;
                 if (nErr == WSAEWOULDBLOCK || nErr == WSAEINTR || nErr == WSAEINPROGRESS) {
-                    MilliSleep(40);
+                    MilliSleep(10);
                     continue;
                 }
             }
@@ -240,7 +240,9 @@ void ThreadIRCSeed() {
     int nNameRetry = 0;
 
 begin_irc:
+	MilliSleep(1000);
 	boost::this_thread::interruption_point();
+	LogPrintf("Beginning IRC session.\n");
     CService addrConnect("62.210.131.147", 7777); // irc.lfnet.org
 
     CService addrIRC("irc.lfnet.org", 7777, true);
@@ -252,20 +254,23 @@ begin_irc:
     if (!ConnectSocket(addrConnect, hSocket, 60*5)) {
         LogPrintf("IRC connect failed\n");
         nErrorWait = nErrorWait * 11 / 10;
-        if (Wait(nErrorWait += 60))
+        if (Wait(nErrorWait += 60)) {
             goto begin_irc;
-        else
+        } else {
             return;
+        }
     }
 
     if (!RecvUntil(hSocket, "Found your hostname", "using your IP address instead", "Couldn't look up your hostname", "ignoring hostname")) {
         closesocket(hSocket);
         hSocket = INVALID_SOCKET;
+        LogPrintf("IRC error in RecvUntil.\n");
         nErrorWait = nErrorWait * 11 / 10;
-        if (Wait(nErrorWait += 60))
+        if (Wait(nErrorWait += 60)) {
             goto begin_irc;
-        else
+        } else {
             return;
+        }
     }
 
     CNetAddr addrIPv4("1.2.3.4"); // arbitrary IPv4 address to make GetLocal prefer IPv4 addresses
@@ -299,10 +304,7 @@ begin_irc:
             return;
     }
     nNameRetry = 0;
-
-    boost::this_thread::interruption_point();
-    MilliSleep(500);
-    boost::this_thread::interruption_point();
+    MilliSleep(1000*25);
 
     // Get our external IP from the IRC server and re-nick before joining the channel
     CNetAddr addrFromIRC;
@@ -333,11 +335,8 @@ begin_irc:
     int64 nStart = GetTime();
     string strLine;
     strLine.reserve(10000);
-
-    while (RecvLineIRC(hSocket, strLine)) {
-
-    	boost::this_thread::interruption_point();
-
+    boost::this_thread::interruption_point();
+    while (!ShutdownRequested() && RecvLineIRC(hSocket, strLine)) {
         if (strLine.empty() || strLine.size() > 900 || strLine[0] != ':')
             continue;
 
@@ -375,6 +374,7 @@ begin_irc:
                 LogPrintf("IRC decode failed\n");
             }
         }
+        boost::this_thread::interruption_point();
     }
     closesocket(hSocket);
     hSocket = INVALID_SOCKET;

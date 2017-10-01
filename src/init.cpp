@@ -183,6 +183,7 @@ std::string HelpMessage()
     strUsage += "  -externalip=<ip>       " + _("Specify your own public address") + "\n";
     strUsage += "  -onlynet=<net>         " + _("Only connect to nodes in network <net> (IPv4, IPv6 or Tor)") + "\n";
     strUsage += "  -discover              " + _("Discover own IP address (default: 1 when listening and no -externalip)") + "\n";
+    strUsage += "  -irc                   " + _("Find peers using internet relay chat (default: 1)") + "\n" +
     strUsage += "  -listen                " + _("Accept connections from outside (default: 1 if no -proxy or -connect)") + "\n";
     strUsage += "  -bind=<addr>           " + _("Bind to given address. Use [host]:port notation for IPv6") + "\n";
     strUsage += "  -dnsseed               " + _("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)") + "\n";
@@ -399,10 +400,10 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
 
-    //mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");  // abc - aws
-    //mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");  // abc - red
-    //mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024"); // abc - blue
-    //mapMultiArgs["-seednode"].push_back("seednode=51.15.198.252:10024");  // konez2k - vps
+    mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");  // abc - aws
+    mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");  // abc - red
+    mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024"); // abc - blue
+    mapMultiArgs["-seednode"].push_back("seednode=51.15.198.252:10024");  // konez2k - vps
 
     // ********************************************************* Step 3: parameter-to-internal-flags
 
@@ -882,7 +883,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (IsLimited(NET_IPV4)) { goto no_irc; } // Don't connect to IRC if we won't use IPv4 connections.
     if (mapArgs.count("-connect") && fNoListen) { goto no_irc; } // ... or if we won't make outbound connections and won't accept inbound ones.
     if (!GetBoolArg("-irc", true)) { goto no_irc; } // ... or if IRC is not enabled.
-    threadGroup.create_thread(boost::bind(&LoopForever<void (*)()>, "irc", &ThreadIRCSeed, 1000*60*20));
+    threadGroup.create_thread(boost::bind(&LoopForever<void (*)()>, "irc", &ThreadIRCSeed, 1000*60));
 no_irc:
 
     return !fRequestShutdown;
