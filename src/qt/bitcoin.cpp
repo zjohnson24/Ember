@@ -292,7 +292,7 @@ int main(int argc, char *argv[]) {
                 QObject::connect(paymentServer, SIGNAL(receivedURI(QString)), &window, SLOT(handleURI(QString)));
                 QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
 
-                threadGroup.create_thread(boost::bind(&ThreadUpdater, guiref));
+                threadGroup.create_thread(boost::bind(&ThreadUpdater, boost::ref(guiref)));
 
                 app.exec();
 
@@ -340,7 +340,7 @@ int main(int argc, char *argv[]) {
 					NULL, // default working dir
 					&siStartupInfo,
 					&piProcessInfo);
-		TerminateProcess(GetCurrentProcess(),0);
+		//TerminateProcess(GetCurrentProcess(),0);
     }
     return 0;
 }

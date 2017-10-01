@@ -40,7 +40,6 @@ class Download: public QObject {
 
 private:
 	BitcoinGUI *guiref;
-    QTimer *updater_timer;
 
 public:
     bool am_complete_trigger;

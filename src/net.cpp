@@ -1084,22 +1084,17 @@ void static ProcessOneShot()
     }
 }
 
-void ThreadOpenConnections()
-{
+void ThreadOpenConnections() {
     // Connect to specific addresses
-    if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
-    {
-        for (int64_t nLoop = 0;; nLoop++)
-        {
-            ProcessOneShot();
+    if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0) {
+        for (int64_t nLoop = 0;; nLoop++) {
             boost::this_thread::interruption_point();
+            ProcessOneShot();
             BOOST_FOREACH(string strAddr, mapMultiArgs["-connect"])
             {
-            	boost::this_thread::interruption_point();
                 CAddress addr;
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++) {
-                	boost::this_thread::interruption_point();
                     MilliSleep(500);
                 }
             }
@@ -1111,20 +1106,8 @@ void ThreadOpenConnections()
     int64_t nStart = GetTime();
     while (!ShutdownRequested()) {
     	boost::this_thread::interruption_point();
-
         ProcessOneShot();
-
-        boost::this_thread::interruption_point();
-
-        MilliSleep(500);
-
-        boost::this_thread::interruption_point();
-
         CSemaphoreGrant grant(*semOutbound);
-
-        boost::this_thread::interruption_point();
-
-
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
         if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
@@ -1140,7 +1123,6 @@ void ThreadOpenConnections()
         // Choose an address to connect to based on most recently seen
         //
         CAddress addrConnect;
-        boost::this_thread::interruption_point();
 
         // Only connect out to one peer per network group (/16 for IPv4).
         // Do this here so we don't have to critsect vNodes inside mapAddresses critsect.
@@ -1150,7 +1132,6 @@ void ThreadOpenConnections()
         {
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes) {
-            	boost::this_thread::interruption_point();
                 if (!pnode->fInbound) {
                     setConnected.insert(pnode->addr.GetGroup());
                     nOutbound++;
@@ -1162,7 +1143,6 @@ void ThreadOpenConnections()
 
         int nTries = 0;
         while (!ShutdownRequested()) {
-        	boost::this_thread::interruption_point();
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
@@ -1198,6 +1178,7 @@ void ThreadOpenConnections()
         if (addrConnect.IsValid()) {
             OpenNetworkConnection(addrConnect, &grant);
         }
+        MilliSleep(50);
     }
 }
 
@@ -1220,7 +1201,7 @@ void ThreadOpenAddedConnections()
                 CAddress addr;
                 CSemaphoreGrant grant(*semOutbound);
                 OpenNetworkConnection(addr, &grant, strAddNode.c_str());
-                MilliSleep(200);
+                MilliSleep(500);
             }
             MilliSleep(2*60*1000); // Retry every 2 minutes
         }
@@ -1267,9 +1248,9 @@ void ThreadOpenAddedConnections()
         {
             CSemaphoreGrant grant(*semOutbound);
             OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
-            MilliSleep(200);
+            MilliSleep(500);
         }
-        MilliSleep(60*1000); // Retry every 60 seconds
+        MilliSleep(2*60*1000); // Retry every 2 minutes
     }
 }
 
