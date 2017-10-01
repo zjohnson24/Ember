@@ -72,7 +72,7 @@ Value getstakesubsidy(const Array& params, bool fHelp)
     }
 
     int64_t nCalculatedStakeReward;
-    uint160 nNewCalculatedStakeReward;
+    CBigNum nNewCalculatedStakeReward;
     CTxDB txdb("r");
     if (!GetProofOfStakeReward(tx, txdb, 0, nCalculatedStakeReward, nNewCalculatedStakeReward))
         throw JSONRPCError(RPC_MISC_ERROR, "GetProofOfStakeReward failed");
@@ -100,12 +100,12 @@ Value getstakesubsidynew(const Array& params, bool fHelp)
     }
 
     int64_t nCalculatedStakeReward;
-    uint160 nNewCalculatedStakeReward;
+    CBigNum nNewCalculatedStakeReward;
     CTxDB txdb("r");
     if (!GetProofOfStakeReward(tx, txdb, 0, nCalculatedStakeReward, nNewCalculatedStakeReward))
         throw JSONRPCError(RPC_MISC_ERROR, "GetProofOfStakeReward failed");
 
-    return nNewCalculatedStakeReward.GetLow64();
+    return nNewCalculatedStakeReward.getuint64();
 }
 
 Value getmininginfo(const Array& params, bool fHelp)

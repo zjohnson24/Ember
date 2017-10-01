@@ -125,7 +125,7 @@ void DebugMessageHandler(QtMsgType type, const QMessageLogContext& context, cons
 #ifndef BITCOIN_QT_TEST
 int main(int argc, char *argv[])
 {
-	fHaveGUI = true;
+    fHaveGUI = true;
 
 	// Command-line options take precedence:
 	ParseParameters(argc, argv);
@@ -154,74 +154,78 @@ int main(int argc, char *argv[])
 	qInstallMessageHandler(DebugMessageHandler);
 #endif
 
-	// Command-line options take precedence:
-	ParseParameters(argc, argv);
+    // Command-line options take precedence:
+    ParseParameters(argc, argv);
 
-	// ... then bitcoin.conf:
-	if (!boost::filesystem::is_directory(GetDataDir(false)))
-	{
-		// This message can not be translated, as translation is not initialized yet
-		// (which not yet possible because lang=XX can be overridden in bitcoin.conf in the data directory)
-		QMessageBox::critical(0, "Ember",
-							  QString("Error: Specified data directory \"%1\" does not exist.").arg(QString::fromStdString(mapArgs["-datadir"])));
-		return 1;
-	}
-	ReadConfigFile(mapArgs, mapMultiArgs);
-	// Add Daemon config settings - Also gets us connected for initial launch (before config file takes effect)
+    // ... then bitcoin.conf:
+    if (!boost::filesystem::is_directory(GetDataDir(false)))
+    {
+        // This message can not be translated, as translation is not initialized yet
+        // (which not yet possible because lang=XX can be overridden in bitcoin.conf in the data directory)
+        QMessageBox::critical(0, "Ember",
+                              QString("Error: Specified data directory \"%1\" does not exist.").arg(QString::fromStdString(mapArgs["-datadir"])));
+        return 1;
+    }
+    ReadConfigFile(mapArgs, mapMultiArgs);
+    // Add Daemon config settings - Also gets us connected for initial launch (before config file takes effect)
+    //mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");  // abc - aws
+    //mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");  // abc - red
+    //mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024"); // abc - blue
+    //mapMultiArgs["-seednode"].push_back("seednode=51.15.198.252:10024");  // konez2k - vps
 
-	// Application identification (must be set before OptionsModel is initialized,
-	// as it is used to locate QSettings)
-	app.setOrganizationName("Ember");
-	//XXX app.setOrganizationDomain("");
-	if(GetBoolArg("-testnet", false)) // Separate UI settings for testnet
-		app.setApplicationName("Ember-Qt-testnet");
-	else
-		app.setApplicationName("Ember-Qt");
+    // Application identification (must be set before OptionsModel is initialized,
+    // as it is used to locate QSettings)
+    app.setOrganizationName("Ember");
+    //XXX app.setOrganizationDomain("");
+    if(GetBoolArg("-testnet", false)) // Separate UI settings for testnet
+        app.setApplicationName("Ember-Qt-testnet");
+    else
+        app.setApplicationName("Ember-Qt");
 
-	// ... then GUI settings:
-	OptionsModel optionsModel;
+    // ... then GUI settings:
+    OptionsModel optionsModel;
 
-	// Get desired locale (e.g. "de_DE") from command line or use system locale
-	QString lang_territory = QString::fromStdString(GetArg("-lang", QLocale::system().name().toStdString()));
-	QString lang = lang_territory;
-	// Convert to "de" only by truncating "_DE"
-	lang.truncate(lang_territory.lastIndexOf('_'));
+    // Get desired locale (e.g. "de_DE") from command line or use system locale
+    QString lang_territory = QString::fromStdString(GetArg("-lang", QLocale::system().name().toStdString()));
+    QString lang = lang_territory;
+    // Convert to "de" only by truncating "_DE"
+    lang.truncate(lang_territory.lastIndexOf('_'));
 
-	QTranslator qtTranslatorBase, qtTranslator, translatorBase, translator;
-	// Load language files for configured locale:
-	// - First load the translator for the base language, without territory
-	// - Then load the more specific locale translator
+    QTranslator qtTranslatorBase, qtTranslator, translatorBase, translator;
+    // Load language files for configured locale:
+    // - First load the translator for the base language, without territory
+    // - Then load the more specific locale translator
 
-	// Load e.g. qt_de.qm
-	if (qtTranslatorBase.load("qt_" + lang, QLibraryInfo::location(QLibraryInfo::TranslationsPath)))
-		app.installTranslator(&qtTranslatorBase);
+    // Load e.g. qt_de.qm
+    if (qtTranslatorBase.load("qt_" + lang, QLibraryInfo::location(QLibraryInfo::TranslationsPath)))
+        app.installTranslator(&qtTranslatorBase);
 
-	// Load e.g. qt_de_DE.qm
-	if (qtTranslator.load("qt_" + lang_territory, QLibraryInfo::location(QLibraryInfo::TranslationsPath)))
-		app.installTranslator(&qtTranslator);
+    // Load e.g. qt_de_DE.qm
+    if (qtTranslator.load("qt_" + lang_territory, QLibraryInfo::location(QLibraryInfo::TranslationsPath)))
+        app.installTranslator(&qtTranslator);
 
-	// Load e.g. bitcoin_de.qm (shortcut "de" needs to be defined in bitcoin.qrc)
-	if (translatorBase.load(lang, ":/translations/"))
-		app.installTranslator(&translatorBase);
+    // Load e.g. bitcoin_de.qm (shortcut "de" needs to be defined in bitcoin.qrc)
+    if (translatorBase.load(lang, ":/translations/"))
+        app.installTranslator(&translatorBase);
 
-	// Load e.g. bitcoin_de_DE.qm (shortcut "de_DE" needs to be defined in bitcoin.qrc)
-	if (translator.load(lang_territory, ":/translations/"))
-		app.installTranslator(&translator);
+    // Load e.g. bitcoin_de_DE.qm (shortcut "de_DE" needs to be defined in bitcoin.qrc)
+    if (translator.load(lang_territory, ":/translations/"))
+        app.installTranslator(&translator);
 
-	// Subscribe to global signals from core
-	uiInterface.ThreadSafeMessageBox.connect(ThreadSafeMessageBox);
-	uiInterface.ThreadSafeAskFee.connect(ThreadSafeAskFee);
-	uiInterface.InitMessage.connect(InitMessage);
-	uiInterface.Translate.connect(Translate);
+    // Subscribe to global signals from core
+    uiInterface.ThreadSafeMessageBox.connect(ThreadSafeMessageBox);
+    uiInterface.ThreadSafeAskFee.connect(ThreadSafeAskFee);
+    uiInterface.InitMessage.connect(InitMessage);
+    uiInterface.Translate.connect(Translate);
 
-	// Show help message immediately after parsing command-line options (for "-lang") and setting locale,
-	// but before showing splash screen.
-	if (mapArgs.count("-?") || mapArgs.count("--help"))
-	{
-		GUIUtil::HelpMessageBox help;
-		help.showOrPrint();
-		return 1;
-	}
+    // Show help message immediately after parsing command-line options (for "-lang") and setting locale,
+    // but before showing splash screen.
+    if (mapArgs.count("-?") || mapArgs.count("--help"))
+    {
+        GUIUtil::HelpMessageBox help;
+        help.showOrPrint();
+        return 1;
+    }
 
 #ifdef Q_OS_MAC
 	// on mac, also change the icon now because it would look strange to have a testnet splash (green) and a std app icon (orange)
@@ -339,9 +343,10 @@ int main(int argc, char *argv[])
 					&siStartupInfo,
 					&piProcessInfo);
 		TerminateProcess(GetCurrentProcess(),0);
+
 		ExitProcess(0); // exit this process
 		#endif
-	}
-	return 0;
+    }
+    return 0;
 }
 #endif // BITCOIN_QT_TEST

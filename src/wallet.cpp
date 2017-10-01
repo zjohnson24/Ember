@@ -1979,9 +1979,9 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     {
     	CTxDB txdb("r");
         int64_t nCalculatedStakeReward;
-        uint160 nNewCalculatedStakeReward;
+        CBigNum nNewCalculatedStakeReward;
         GetProofOfStakeReward(txNew, txdb, nFees, nCalculatedStakeReward, nNewCalculatedStakeReward);
-        nCredit += nNewCalculatedStakeReward.GetLow64();
+        nCredit += nCalculatedStakeReward; // nNewCalculatedStakeReward.GetLow64()
     }
 
     // Set output amount

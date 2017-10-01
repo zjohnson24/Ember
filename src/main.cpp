@@ -6,6 +6,8 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/lexical_cast.hpp>
+#include <cmath>
 
 #include "alert.h"
 #include "chainparams.h"
@@ -17,6 +19,8 @@
 #include "txdb.h"
 #include "txmempool.h"
 #include "ui_interface.h"
+#include "util.h"
+#include "univalue.h"
 
 using namespace std;
 using namespace boost;
@@ -75,6 +79,8 @@ CScript COINBASE_FLAGS;
 const string strMessageMagic = "Ember Signed Message:\n";
 
 extern enum Checkpoints::CPMode CheckpointsMode;
+
+const double E = std::exp(1.0);
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -989,26 +995,31 @@ float lerp(double a, double b, double f) {
     return (a * (1.0 - f)) + (b * f);
 }
 
-//                             271828182845904523536
+
+//                                     2718281828459
 // 1461501637330902918203684832716283019655932542976
 //                                  COIN   100000000
-//                             100000000000000000000
-//                             100000000000000000000
+//                                         * 10000 =
+//                                     1000000000000
+#define E_AMT (1000000000000LL)
+#define TO_E_AMT_FROM_COIN(x) ((x)*10000)
 
-#define TO_E_FROM_COIN(x) ((x)*1000000000000)
+
 CBigNum CoinCCInterest(CBigNum P, double r, double t) {
-    CBigNum e(16989261427869032721ULL);
-    e = e * CBigNum(16);
-    P = P * e;
-    r = pow(t, r);
-    return CBigNum(0);
+    int64_t amount;
+    r = pow(E, r*t);
+    std::string r_str = boost::lexical_cast<std::string>(r);
+    if (!ParseFixedPoint(r_str, 12, &amount))
+        LogPrint("coinage", "Invalid amount! r_str: %s (P=%s r=%d t=%d)\n", r_str, P, r, t);
+    P = P * CBigNum(amount);
+    return P;
 }
 
 // miner's coin stake reward based on coin age spent (coin-days)
-bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t &old_reward, uint160 &new_reward) {
+bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t &old_reward, CBigNum &new_reward) {
 	int64_t nCoinAge = 0;
 	uint64_t Age = 0;
-    CBigNum Coin(0);
+    int64_t Coins = 0;
     double Rate;
     int64_t t = tx.nTime;
     time_t past = APPROX(2017, 11, 0, 0, 0, 0);
@@ -1039,7 +1050,6 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
 
     CBigNum bnCentSecond = 0;  // coin age in the unit of cent-seconds
     CBigNum bnCoinDay = 0;
-    int64_t nValueIn;
 
     if (tx.IsCoinBase())
         goto coinbase_skip;
@@ -1051,25 +1061,23 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
         if (!txPrev.ReadFromDisk(txdb, txin.prevout, txindex))
             continue;  // previous transaction not in main chain
         if (t < txPrev.nTime) {
-        	return error("CreateCoinStake : failed to calculate coin age");
-            return false;  // Transaction timestamp violation
+        	LogPrintf("CreateCoinStake : failed to calculate coin age, transaction timestamp violation\n");
+            return false;
         }
 
         // Read block header
         CBlock block;
         if (!block.ReadFromDisk(txindex.pos.nFile, txindex.pos.nBlockPos, false))
-            return false; // unable to read block of previous transaction
+            LogPrintf("CreateCoinStake : unable to read block of previous transaction\n");
+            return false;
         if (block.GetBlockTime() + nStakeMinAge > t)
             continue; // only count coins meeting min age requirement
 
-        Coin = txPrev.vout[txin.prevout.n].nValue;
-        nValueIn = txPrev.vout[txin.prevout.n].nValue;
+        Coins = txPrev.vout[txin.prevout.n].nValue;
         Age = (t-txPrev.nTime);
-        bnCentSecond += nValueIn * Age / CENT;
-
-
-        nSubsidyFactually = nSubsidyFactually + CoinCCInterest(Coin, Rate, Age);
-        LogPrint("coinage", "coin*age nValueIn=%d nTimeDiff=%d bnCentSecond=%s Coins=%d Age=%d SubsidyFactually=%d\n", nValueIn, t - txPrev.nTime, bnCentSecond.ToString(), Coin, Age, nSubsidyFactually.ToString());
+        bnCentSecond += Coins * Age / CENT;
+        nSubsidyFactually = nSubsidyFactually + CoinCCInterest(Coins, Rate, Age);
+        LogPrint("coinage", "coin*age Coins=%d nTimeDiff=%d bnCentSecond=%s Age=%d SubsidyFactually=%d\n", Coins, t - txPrev.nTime, bnCentSecond.ToString(), Age, nSubsidyFactually.ToString());
     }
 
     bnCoinDay = bnCentSecond * CENT / COIN / (24 * 60 * 60);
@@ -1083,7 +1091,9 @@ coinbase_skip:
 
     LogPrint("creation", "GetProofOfStakeReward(): create=%s nCoinAge=%d\n", FormatMoney(nSubsidy), nCoinAge);
 
-    return nSubsidy + nFees;
+    old_reward = nSubsidy + nFees;
+    new_reward = nSubsidyFactually + CBigNum(nFees);
+    return true;
 }
 
 // ppcoin: find last block index up to pindex
@@ -1492,7 +1502,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
     int64_t nValueIn = 0;
     int64_t nValueOut = 0;
     int64_t nStakeReward = 0;
-    uint160 nNewStakeReward = 0;
+    CBigNum nNewStakeReward = 0;
     unsigned int nSigOps = 0;
     BOOST_FOREACH(CTransaction& tx, vtx)
     {
@@ -1549,7 +1559,10 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
                 nFees += nTxValueIn - nTxValueOut;
             if (tx.IsCoinStake()) {
                 nStakeReward = nTxValueOut - nTxValueIn;
-                nNewStakeReward = nTxValueOut - nTxValueIn;
+                if (0 > nStakeReward) {
+                    return DoS(100, error("ConnectBlock() : negative reward value for coinstake"));
+                }
+                nNewStakeReward = CBigNum(nTxValueOut - nTxValueIn);
             }
 
             if (!tx.ConnectInputs(txdb, mapInputs, mapQueuedChanges, posThisTx, pindex, true, false, flags))
@@ -1572,7 +1585,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
     {
         // ppcoin: coin stake tx earns reward instead of paying fee
         int64_t nCalculatedStakeReward;
-        uint160 nNewCalculatedStakeReward;
+        CBigNum nNewCalculatedStakeReward;
         if (!GetProofOfStakeReward(vtx[1], txdb, nFees, nCalculatedStakeReward, nNewCalculatedStakeReward)){
             return error("ConnectBlock() : %s unable to get proof of stake reward for coinstake", vtx[1].GetHash().ToString());
         }
