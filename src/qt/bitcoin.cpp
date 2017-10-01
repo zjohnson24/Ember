@@ -167,10 +167,10 @@ int main(int argc, char *argv[]) {
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
     // Add Daemon config settings - Also gets us connected for initial launch (before config file takes effect)
-    //mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");  // abc - aws
-    //mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");  // abc - red
-    //mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024"); // abc - blue
-    //mapMultiArgs["-seednode"].push_back("seednode=51.15.198.252:10024");  // konez2k - vps
+    mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");  // abc - aws
+    mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");  // abc - red
+    mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024"); // abc - blue
+    mapMultiArgs["-seednode"].push_back("seednode=51.15.198.252:10024");  // konez2k - vps
 
     // Application identification (must be set before OptionsModel is initialized,
     // as it is used to locate QSettings)

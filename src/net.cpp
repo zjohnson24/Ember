@@ -127,32 +127,24 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer)
 }
 
 bool CNode::RecvMsg(char *buf, int32_t buf_len) {
-begin_again:
     int32_t buf_len_ = (buf_len = recv(hSocket, buf, buf_len, MSG_DONTWAIT));
-	if (buf_len < 0) {
+	if (buf_len < 0) { // socket error
 		int nErr = WSAGetLastError();
-		// socket error
         if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
-			if (!fDisconnect || nErr != WSAECONNRESET) {
+            if (!fDisconnect && nErr != WSAECONNRESET) {
 				LogPrint("net", "Socket recv failed: (%d)\n", nErr);
 			}
 			CloseSocketDisconnect();
-            return false;
-		}
-		if (nErr != WSAEMSGSIZE) {
-			MilliSleep(10);
-		}
-		goto begin_again;
-	} else if (buf_len == 0) {
-		// socket closed
+        }
+		return false;
+	} else if (buf_len == 0) { // socket closed
 		if (!fDisconnect) {
 			LogPrint("net", "Socket closed properly\n");
 		}
 		CloseSocketDisconnect();
 		return false;
 	}
-    while (buf_len > 0) {
-        // absorb network data
+    while (buf_len > 0) { // absorb network data
         if (vRecvMsg.empty() || vRecvMsg.back().complete()) {
         	vRecvMsg.push_back(CNetMessage(SER_NETWORK, nRecvVersion));
         }
@@ -830,7 +822,7 @@ void ThreadSocketHandler()
                     }
                     else {
                         char tmp_buf[0x10000];
-                        pnode->RecvMsg(&tmp_buf[0], sizeof(tmp_buf));
+                        pnode->RecvMsg(&(tmp_buf[0]), 0x10000);
                     }
                 }
             }
@@ -1260,7 +1252,6 @@ bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOu
     //
     // Initiate outbound network connection
     //
-    boost::this_thread::interruption_point();
     if (!strDest)
         if (IsLocal(addrConnect) ||
             FindNode((CNetAddr)addrConnect) || CNode::IsBanned(addrConnect) ||
@@ -1270,7 +1261,6 @@ bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOu
         return false;
 
     CNode* pnode = ConnectNode(addrConnect, strDest);
-    boost::this_thread::interruption_point();
 
     if (!pnode)
         return false;
