@@ -1,15 +1,18 @@
-src/*.exe
+!src/leveldb/Makefile
+
+inc
+libs
+dll
+deps
+debug
+release
+build
+Makefile.*
+object_script.Ember-qt.*
+Emberd
 src/Ember
 src/Emberd
 src/test_Ember
-src/build.h
-.*.swp
-*.*~*
-*.bak
-*.rej
-*.orig
-*.o
-*.patch
 .Ember
 #compilation and Qt preprocessor part
 *.qm
@@ -25,4 +28,43 @@ build
 .qmake.stash
 Ember-Qt.app*
 
-!src/leveldb/Makefile
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Miscellaneous
+.*.swp
+*.*~*
+*.bak
+*.rej
+*.orig
+*.patch
