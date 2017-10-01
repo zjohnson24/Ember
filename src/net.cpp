@@ -134,8 +134,11 @@ begin_again:
 		// socket error
 
         if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
-            if (!fDisconnect || nErr != ECONNRESET/*WSAECONNRESET*/) {
-
+#ifdef Q_OS_WIN
+            if (!fDisconnect || nErr != WSAECONNRESET) {
+#else
+            if (!fDisconnect || nErr != ECONNRESET) {
+#endif
 				LogPrint("net", "Socket recv failed: (%d)\n", nErr);
 			}
 			CloseSocketDisconnect();
