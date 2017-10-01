@@ -9,7 +9,6 @@
 #include "main.h"
 #include "addrman.h"
 #include "ui_interface.h"
-#include "init.h"
 
 #ifdef WIN32
 #include <string.h>
@@ -28,7 +27,7 @@
 using namespace std;
 using namespace boost;
 
-static const int MAX_OUTBOUND_CONNECTIONS = 125;
+static const int MAX_OUTBOUND_CONNECTIONS = 64;
 
 bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 
@@ -127,27 +126,17 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer)
 }
 
 bool CNode::RecvMsg(char *buf, int32_t buf_len) {
-begin_again:
-    int32_t buf_len_ = (buf_len = recv(hSocket, buf, buf_len, MSG_DONTWAIT));
+	uint32_t buf_len_ = (buf_len = recv(hSocket, buf, buf_len, MSG_DONTWAIT));
 	if (buf_len < 0) {
 		int nErr = WSAGetLastError();
 		// socket error
-
-        if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
-#ifdef Q_OS_WIN
-            if (!fDisconnect || nErr != WSAECONNRESET) {
-#else
-            if (!fDisconnect || nErr != ECONNRESET) {
-#endif
+		if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
+			if (!fDisconnect) {
 				LogPrint("net", "Socket recv failed: (%d)\n", nErr);
 			}
 			CloseSocketDisconnect();
-            return false;
 		}
-		if (nErr != WSAEMSGSIZE) {
-			MilliSleep(10);
-		}
-		goto begin_again;
+		return false;
 	} else if (buf_len == 0) {
 		// socket closed
 		if (!fDisconnect) {
@@ -785,29 +774,24 @@ void ThreadSocketHandler()
                 int nErr = WSAGetLastError();
                 if (nErr != WSAEWOULDBLOCK)
                     LogPrintf("socket error accept failed: %d\n", nErr);
-                return;
             }
-
-            if (CNode::IsBanned(addr)) {
+            else if (nInbound >= GetArg("-maxconnections", 255) - MAX_OUTBOUND_CONNECTIONS)
+            {
+                closesocket(hSocket);
+            } else if (CNode::IsBanned(addr)) {
                 LogPrintf("connection from %s dropped (banned)\n", addr.ToString());
                 closesocket(hSocket);
-                return;
-            }
-
-            if (nInbound >= GetArg("-maxconnections", 255) - MAX_OUTBOUND_CONNECTIONS)
-            {
-                closesocket(hSocket);
-                return;
-            }
-
-            LogPrint("net", "accepted connection %s\n", addr.ToString());
-            CNode* pnode = new CNode(hSocket, addr, "", true);
-            pnode->AddRef();
-            {
-                LOCK(cs_vNodes);
-                vNodes.push_back(pnode);
+            } else {
+                LogPrint("net", "accepted connection %s\n", addr.ToString());
+                CNode* pnode = new CNode(hSocket, addr, "", true);
+                pnode->AddRef();
+                {
+                    LOCK(cs_vNodes);
+                    vNodes.push_back(pnode);
+                }
             }
         }
+
 
         //
         // Service each socket
@@ -840,7 +824,7 @@ void ThreadSocketHandler()
                     }
                     else {
                         char tmp_buf[0x10000];
-                        pnode->RecvMsg(&tmp_buf[0], sizeof(tmp_buf));
+                        pnode->RecvMsg(tmp_buf, sizeof(tmp_buf));
                     }
                 }
             }
@@ -1022,9 +1006,8 @@ void ThreadDNSAddressSeed()
     // goal: only query DNS seeds if address need is acute
     if ((addrman.size() > 0) &&
         (!GetBoolArg("-forcednsseed", false))) {
-    	boost::this_thread::interruption_point();
         MilliSleep(11 * 1000);
-        boost::this_thread::interruption_point();
+
         LOCK(cs_vNodes);
         if (vNodes.size() >= 2) {
             LogPrintf("P2P peers available. Skipped DNS seeding.\n");
@@ -1106,39 +1089,28 @@ void ThreadOpenConnections()
         for (int64_t nLoop = 0;; nLoop++)
         {
             ProcessOneShot();
-            boost::this_thread::interruption_point();
             BOOST_FOREACH(string strAddr, mapMultiArgs["-connect"])
             {
-            	boost::this_thread::interruption_point();
                 CAddress addr;
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
-                for (int i = 0; i < 10 && i < nLoop; i++) {
-                	boost::this_thread::interruption_point();
-                    MilliSleep(500);
+                for (int i = 0; i < 10 && i < nLoop; i++)
+                {
+                    MilliSleep(50);
                 }
             }
-            MilliSleep(500);
+            MilliSleep(50);
         }
     }
 
     // Initiate network connections
     int64_t nStart = GetTime();
-    while (!ShutdownRequested()) {
-    	boost::this_thread::interruption_point();
-
+    while (true) {
         ProcessOneShot();
 
-        boost::this_thread::interruption_point();
-
-        MilliSleep(500);
-
-        boost::this_thread::interruption_point();
+        MilliSleep(10);
 
         CSemaphoreGrant grant(*semOutbound);
-
         boost::this_thread::interruption_point();
-
-
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
         if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
@@ -1154,7 +1126,6 @@ void ThreadOpenConnections()
         // Choose an address to connect to based on most recently seen
         //
         CAddress addrConnect;
-        boost::this_thread::interruption_point();
 
         // Only connect out to one peer per network group (/16 for IPv4).
         // Do this here so we don't have to critsect vNodes inside mapAddresses critsect.
@@ -1163,7 +1134,6 @@ void ThreadOpenConnections()
         {
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes) {
-            	boost::this_thread::interruption_point();
                 if (!pnode->fInbound) {
                     setConnected.insert(pnode->addr.GetGroup());
                     nOutbound++;
@@ -1174,19 +1144,18 @@ void ThreadOpenConnections()
         int64_t nANow = GetAdjustedTime();
 
         int nTries = 0;
-        while (!ShutdownRequested()) {
-        	boost::this_thread::interruption_point();
+        while (true) {
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr))
                 break;
 
-            // If we didn't find an appropriate destination after trying 100 addresses fetched from addrman,
+            // If we didn't find an appropriate destination after trying 512 addresses fetched from addrman,
             // stop this loop, and let the outer loop run again (which sleeps, adds seed nodes, recalculates
             // already-connected network ranges, ...) before trying new addrman addresses.
             nTries++;
-            if (nTries > 100) {
+            if (nTries > 512) {
                 break;
             }
 
@@ -1199,8 +1168,8 @@ void ThreadOpenConnections()
                 continue;
             }
 
-            // do not allow non-default ports, unless after 32 invalid addresses selected already
-            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 32) {
+            // do not allow non-default ports, unless after 50 invalid addresses selected already
+            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50) {
                 continue;
             }
 
@@ -1233,9 +1202,9 @@ void ThreadOpenAddedConnections()
                 CAddress addr;
                 CSemaphoreGrant grant(*semOutbound);
                 OpenNetworkConnection(addr, &grant, strAddNode.c_str());
-                MilliSleep(200);
+                MilliSleep(25);
             }
-            MilliSleep(2*60*1000); // Retry every 2 minutes
+            MilliSleep(5*1000); // Retry every 5 seconds
         }
     }
 
@@ -1280,9 +1249,9 @@ void ThreadOpenAddedConnections()
         {
             CSemaphoreGrant grant(*semOutbound);
             OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
-            MilliSleep(200);
+            MilliSleep(25);
         }
-        MilliSleep(60*1000); // Retry every 60 seconds
+        MilliSleep(5*1000); // Retry every 5 seconds
     }
 }
 
@@ -1421,7 +1390,7 @@ void ThreadMessageHandler()
         }
 
         if (fSleep)
-            MilliSleep(250);
+            MilliSleep(25);
     }
 }
 
@@ -1590,7 +1559,7 @@ void StartNode(boost::thread_group& threadGroup)
 {
     if (semOutbound == NULL) {
         // initialize semaphore
-        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 64));
+        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 128));
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
