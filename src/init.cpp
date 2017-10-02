@@ -398,10 +398,12 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
 
-    mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");  // abc - aws
-    mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");  // abc - red
-    mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024"); // abc - blue
-    mapMultiArgs["-seednode"].push_back("seednode=51.15.198.252:10024");  // konez2k - vps
+    if(!GetBoolArg("-testnet", false)) {
+        mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");  // abc - aws
+        mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");  // abc - red
+        mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024"); // abc - blue
+        mapMultiArgs["-seednode"].push_back("seednode=51.15.198.252:10024");  // konez2k - vps
+    }
 
     // ********************************************************* Step 3: parameter-to-internal-flags
 
