@@ -7,17 +7,24 @@
 # Originally by Laszlo Hanyecz (solar@heliacal.net)
 
 CXX=llvm-g++
+C=clang
 DEPSDIR=/opt/local
 
 INCLUDEPATHS= \
  -I"$(CURDIR)" \
  -I"$(CURDIR)"/obj \
  -I"$(DEPSDIR)/include" \
- -I"$(DEPSDIR)/include/db48"
+ -I"$(DEPSDIR)/include/db48" \
+ -I"/usr/local/Cellar/openssl/1.0.2l/include" \
+ -I"/usr/local/Cellar/berkeley-db@4/4.8.30/include" \
+ -I"/usr/local/Cellar/boost/1.65.1/include" \
+ -I"/usr/local/Cellar/miniupnpc/2.0.20170509/include"
 
 LIBPATHS= \
- -L"$(DEPSDIR)/lib" \
- -L"$(DEPSDIR)/lib/db48"
+ -L"/usr/local/Cellar/openssl/1.0.2l/lib" \
+ -L"/usr/local/Cellar/berkeley-db@4/4.8.30/lib" \
+ -L"/usr/local/Cellar/boost/1.65.1/lib" \
+ -L"/usr/local/Cellar/miniupnpc/2.0.20170509/lib"
 
 USE_UPNP:=1
 USE_WALLET:=1
@@ -53,7 +60,7 @@ ifdef RELEASE
 # Compile for maximum compatibility and smallest size.
 # This requires that dependencies are compiled
 # the same way.
-CFLAGS = -mmacosx-version-min=10.7 -arch x86_64 -O2 -msse2
+CFLAGS = -mmacosx-version-min=10.9 -arch x86_64 -O2 -msse2
 else
 CFLAGS = -g -msse2
 endif
@@ -109,8 +116,7 @@ OBJS= \
     obj/luffa.o \
     obj/cubehash.o \
     obj/echo.o \
-    obj/simd.o \
-    obj/irc.o
+    obj/simd.o
 
 ifeq (${USE_WALLET}, 1)
     DEFS += -DENABLE_WALLET
@@ -162,7 +168,7 @@ obj/%.o: %.cpp
 	  rm -f $(@:%.o=%.d)
 
 obj/%.o: %.c
-	$(CXX) -c $(xCXXFLAGS) -fpermissive -MMD -MF $(@:%.o=%.d) -o $@ $<
+	$(C) -c $(CFLAGS) -fpermissive -MMD -MF $(@:%.o=%.d) -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	  sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	      -e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
