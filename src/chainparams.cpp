@@ -180,7 +180,7 @@ public:
 
         nTargetSpacing = 200;
         nLastPoWBlock = 0x7fffffff;
-        nStartPoSBlock = 4500;
+        nStartPoSBlock = 0;
     }
     virtual Network NetworkID() const { return CChainParams::TESTNET; }
 };
