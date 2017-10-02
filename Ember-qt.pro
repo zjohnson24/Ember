@@ -1,6 +1,6 @@
 TEMPLATE = app
 TARGET = Ember-qt
-VERSION = 1.1.3.1
+VERSION = 1.1.4.0
 INCLUDEPATH += src src/json src/qt
 QT += network
 DEFINES += ENABLE_WALLET
