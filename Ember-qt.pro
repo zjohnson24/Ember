@@ -26,8 +26,10 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 
 CONFIG(release, debug|release) {
     DESTDIR = release
-    windows:QMAKE_POST_LINK += upx -k --best --overlay=strip --strip-relocs=0 --compress-icons=2 $(DESTDIR_TARGET)
-#    windows:QMAKE_POST_LINK += signtool.exe sign /t http://timestamp.verisign.com/scripts/timstamp.dll /f "MyCert.pfx" /p MyPassword /d $(DESTDIR_TARGET) $(DESTDIR_TARGET)
+    contains(RELEASE, 1) {
+        windows:QMAKE_POST_LINK += upx -k --best --overlay=strip --strip-relocs=0 --compress-icons=2 $(DESTDIR_TARGET)
+        #windows:QMAKE_POST_LINK += signtool.exe sign /t http://timestamp.verisign.com/scripts/timstamp.dll /f "MyCert.pfx" /p MyPassword /d $(DESTDIR_TARGET) $(DESTDIR_TARGET)
+    }
 } else {
     DESTDIR = debug
 }
@@ -438,7 +440,8 @@ TSQM.name = lrelease ${QMAKE_FILE_IN}
 TSQM.input = TRANSLATIONS
 TSQM.output = $$QM_DIR/${QMAKE_FILE_BASE}.qm
 TSQM.commands = $$QMAKE_LRELEASE ${QMAKE_FILE_IN} -qm ${QMAKE_FILE_OUT}
-TSQM.CONFIG = no_link
+windows:TSQM.CONFIG = no_link target_predeps
+else:TSQM.CONFIG = no_link
 QMAKE_EXTRA_COMPILERS += TSQM
 
 # "Other files" to show in Qt Creator

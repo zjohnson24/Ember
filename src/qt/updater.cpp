@@ -180,8 +180,8 @@ char* GetExeUrl(int version) {
 void ThreadUpdater(BitcoinGUI *guiref_) {
 	#ifdef _WIN32
     Download ver_dl(guiref_, "https://www.0xify.com/static/emb/win/x86/_latest_version.txt", TmpPath.string()+"Ember-latest-version.txt");
-    while (!ver_dl.am_complete_trigger) {
-    	MilliSleep(5*1000);
+    while (!ver_dl.am_complete_trigger && !ShutdownRequested()) {
+    	MilliSleep(1000);
     }
     std::string latest_version_str = slurp(TmpPath.string()+"Ember-latest-version.txt");
     LogPrintf("updater: Latest version string of file contents: \"%s\"\n", latest_version_str);
@@ -199,8 +199,8 @@ void ThreadUpdater(BitcoinGUI *guiref_) {
 	   		} else {
 	   			downloading_update = true;
     			Download dl(guiref_, s, TmpPath.string()+"Ember-qt.exe");
-    			while (!dl.am_complete_trigger) {
-    				MilliSleep(5*1000);
+    			while (!dl.am_complete_trigger  && !ShutdownRequested()) {
+    				MilliSleep(1000);
     			}
     			LogPrintf("updater: Got updated version downloaded and primed.\n");
 				ready_to_update = true;

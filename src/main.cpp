@@ -995,22 +995,14 @@ float lerp(double a, double b, double f) {
     return (a * (1.0 - f)) + (b * f);
 }
 
-
-//                                     2718281828459
-// 1461501637330902918203684832716283019655932542976
-//                                  COIN   100000000
-//                                         * 10000 =
-//                                     1000000000000
-#define E_AMT (1000000000000LL)
-#define TO_E_AMT_FROM_COIN(x) ((x)*10000)
-
-
 CBigNum CoinCCInterest(CBigNum P, double r, double t) {
     int64_t amount;
     r = pow(E, r*t);
     std::string r_str = boost::lexical_cast<std::string>(r);
-    if (!ParseFixedPoint(r_str, 12, &amount))
+    if (!ParseFixedPoint(r_str, 8, &amount)) {
         LogPrint("coinage", "Invalid amount! r_str: %s (P=%s r=%d t=%d)\n", r_str, P, r, t);
+        throw std::runtime_error("CoinCCInterest() : Error converting double r to fixed point");
+    }
     P = P * CBigNum(amount);
     return P;
 }
@@ -1019,7 +1011,7 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
 bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t &old_reward, CBigNum &new_reward) {
 	int64_t nCoinAge = 0;
 	uint64_t Age = 0;
-    int64_t Coins = 0;
+    CBigNum Coins = 0;
     double Rate;
     int64_t t = tx.nTime;
     time_t past = APPROX(2017, 11, 0, 0, 0, 0);
@@ -1037,7 +1029,9 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
     } else if (t > past) {
         Rate = lerp(72.0L, 7.2L, quad_ease_io((t-past)/(future-past)));
     } else {
-        Rate = 72.0L / (365 + 8);
+        Rate = (72.0L / (365 + 8));
+        // 0.1930294906166219839142091152815
+        // 19712934
     }
 
     // ppcoin: total coin age spent in transaction, in the unit of coin-days.
@@ -1076,8 +1070,8 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
         Coins = txPrev.vout[txin.prevout.n].nValue;
         Age = (t-txPrev.nTime);
         bnCentSecond += Coins * Age / CENT;
-        nSubsidyFactually = nSubsidyFactually + CoinCCInterest(Coins, Rate, Age);
-        LogPrint("coinage", "coin*age Coins=%d nTimeDiff=%d bnCentSecond=%s Age=%d SubsidyFactually=%d\n", Coins, t - txPrev.nTime, bnCentSecond.ToString(), Age, nSubsidyFactually.ToString());
+        nSubsidyFactually = nSubsidyFactually + CoinCCInterest(Coins, Rate, Age/(365.25 * 24 * 3600));
+        LogPrint("coinage", "coin*age Coins=%s nTimeDiff=%d bnCentSecond=%s Age=%d AgeOverYearSeconds=%d SubsidyFactually=%s\n", Coins.ToString(), t - txPrev.nTime, bnCentSecond.ToString(), Age, Age/(365.25 * 24 * 3600), nSubsidyFactually.ToString());
     }
 
     bnCoinDay = bnCentSecond * CENT / COIN / (24 * 60 * 60);
