@@ -1,7 +1,6 @@
 #include "updater.h"
 #include "util.h"
 #include "compat.h"
-#include "get_exe_path.h"
 #include "init.h"
 
 #include <inttypes.h>
@@ -139,7 +138,7 @@ void Download::ShowDL() {
 void Download::Update() {
 	#ifdef _WIN32
 	boost::filesystem::path tmp = boost::filesystem::unique_path();
-	const std::string dst_str = get_exe_path();
+	const std::string dst_str = QCoreApplication::applicationFilePath();
 	const std::string tmp_str = TmpPath.string()+tmp.string();
 	const std::string src_str = TmpPath.string()+"Ember-qt.exe";
 	LogPrintf("updater: Currently running exe: \"%s\"\n", dst_str);

@@ -28,7 +28,6 @@ void WaitForShutdown(boost::thread_group* threadGroup) {
 bool AppInit(int argc, char* argv[])
 {
     boost::thread_group threadGroup;
-    argv0 = argv[0];
 
     bool fRet = false;
     try
@@ -124,7 +123,6 @@ bool AppInit(int argc, char* argv[])
 extern void noui_connect();
 int main(int argc, char* argv[])
 {
-	argv0 = argv[0];
     bool fRet = false;
     fHaveGUI = false;
 
