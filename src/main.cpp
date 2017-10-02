@@ -1008,7 +1008,7 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
 }
 
 // miner's coin stake reward based on coin age spent (coin-days)
-bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t &old_reward, CBigNum &new_reward) {
+bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t &old_reward, CBigNum &old_reward_bf, CBigNum &new_reward) {
 	int64_t nCoinAge = 0;
 	uint64_t Age = 0;
     CBigNum Coins = 0;
@@ -1081,11 +1081,15 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
 coinbase_skip:
 
     int64_t nSubsidy = nCoinAge * 7200 * 1000000 * 33 / (365 * 33 + 8);
+    bnCoinDay *= 7200;
+    bnCoinDay *= 1000000;
+    bnCoinDay *= 33;
+    bnCoinDay /= (365 * 33 + 8);
 
-
-    LogPrint("creation", "GetProofOfStakeReward(): create=%s nCoinAge=%d\n", FormatMoney(nSubsidy), nCoinAge);
+    LogPrint("creation", "GetProofOfStakeReward(): create=%s create_bf=%s create_new=%s nCoinAge=%d\n", FormatMoney(nSubsidy),  bnCoinDay.ToString(), nSubsidyFactually.ToString(), nCoinAge);
 
     old_reward = nSubsidy + nFees;
+    old_reward_bf = bnCoinDay + CBigNum(nFees);
     new_reward = nSubsidyFactually + CBigNum(nFees);
     return true;
 }
@@ -1496,6 +1500,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
     int64_t nValueIn = 0;
     int64_t nValueOut = 0;
     int64_t nStakeReward = 0;
+    CBigNum nStakeReward_bf = 0;
     CBigNum nNewStakeReward = 0;
     unsigned int nSigOps = 0;
     BOOST_FOREACH(CTransaction& tx, vtx)
@@ -1556,7 +1561,8 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
                 if (0 > nStakeReward) {
                     return DoS(100, error("ConnectBlock() : negative reward value for coinstake"));
                 }
-                nNewStakeReward = CBigNum(nTxValueOut - nTxValueIn);
+                nStakeReward_bf = CBigNum(nTxValueOut) - CBigNum(nTxValueIn);
+                nNewStakeReward = CBigNum(nTxValueOut) - CBigNum(nTxValueIn);
             }
 
             if (!tx.ConnectInputs(txdb, mapInputs, mapQueuedChanges, posThisTx, pindex, true, false, flags))
@@ -1579,19 +1585,29 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
     {
         // ppcoin: coin stake tx earns reward instead of paying fee
         int64_t nCalculatedStakeReward;
+        CBigNum nCalculatedStakeReward_bf;
         CBigNum nNewCalculatedStakeReward;
-        if (!GetProofOfStakeReward(vtx[1], txdb, nFees, nCalculatedStakeReward, nNewCalculatedStakeReward)){
+        if (!GetProofOfStakeReward(vtx[1], txdb, nFees, nCalculatedStakeReward, nCalculatedStakeReward_bf, nNewCalculatedStakeReward)){
             return error("ConnectBlock() : %s unable to get proof of stake reward for coinstake", vtx[1].GetHash().ToString());
         }
 
         if (nStakeReward > nCalculatedStakeReward) {
             return DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%d vs calculated=%d)", nStakeReward, nCalculatedStakeReward));
         }
+
+        if (nStakeReward_bf > nCalculatedStakeReward_bf) {
+            return DoS(100, error("ConnectBlock() : coinstake_bf pays too much(actual=%s vs calculated=%s)", nStakeReward_bf.ToString(), nCalculatedStakeReward_bf.ToString()));
+        }
+
+        if (nStakeReward_bf < nCalculatedStakeReward_bf) {
+            LogPrintf("ConnectBlock() : coinstake_bf pays TOO LITTLE! (newactual=%s vs newcalculated=%s)", nStakeReward_bf.ToString(), nCalculatedStakeReward_bf.ToString());
+        }
+
         if (nNewStakeReward > nNewCalculatedStakeReward) {
-        	return DoS(100, error("ConnectBlock() : coinstake2 pays too much(newactual=%d vs newcalculated=%d)", nNewStakeReward.ToString(), nNewCalculatedStakeReward.ToString()));
+            return DoS(100, error("ConnectBlock() : coinstake_new pays too much(newactual=%s vs newcalculated=%s)", nNewStakeReward.ToString(), nNewCalculatedStakeReward.ToString()));
         }
         if (nNewStakeReward < nNewCalculatedStakeReward) {
-        	LogPrintf("ConnectBlock() : coinstake2 pays TOO LITTLE! (newactual=%d vs newcalculated=%d)", nNewStakeReward.ToString(), nNewCalculatedStakeReward.ToString());
+            LogPrintf("ConnectBlock() : coinstake_new pays TOO LITTLE! (newactual=%s vs newcalculated=%s)", nNewStakeReward.ToString(), nNewCalculatedStakeReward.ToString());
         }
     }
 

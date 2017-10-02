@@ -65,7 +65,6 @@ enum
     LOCAL_IF,     // address a local interface listens on
     LOCAL_BIND,   // address explicit bound to
     LOCAL_UPNP,   // address reported by UPnP
-    LOCAL_DNSSEED,// address gotten from dns seed
     LOCAL_MANUAL, // address explicitly specified (-externalip=)
 
     LOCAL_MAX
@@ -330,7 +329,7 @@ public:
     }
 
     // requires LOCK(cs_vRecvMsg)
-    bool RecvMsg(char *buf, int32_t buf_len);
+    bool ReceiveMsgBytes(const char *pch, unsigned int nBytes);
 
     // requires LOCK(cs_vRecvMsg)
     void SetRecvVersion(int nVersionIn)
@@ -670,7 +669,8 @@ void RelayTransaction(const CTransaction& tx, const uint256& hash);
 void RelayTransaction(const CTransaction& tx, const uint256& hash, const CDataStream& ss);
 
 /** Access to the (IP) address database (peers.dat) */
-class CAddrDB {
+class CAddrDB
+{
 private:
     boost::filesystem::path pathAddr;
 public:

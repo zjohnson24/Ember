@@ -9,17 +9,21 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdexcept>
 #include <inttypes.h>
 #include <string>
 #include <vector>
+
+class uint_error : public std::runtime_error {
+public:
+    explicit uint_error(const std::string& str) : std::runtime_error(str) {}
+};
 
 typedef long long  int64;
 typedef unsigned long long  uint64;
 
 
 inline int Testuint256AdHoc(std::vector<std::string> vArg);
-
-
 
 /** Base class without constructors for uint256 and uint160.
  * This makes the compiler let you use it in a union.
@@ -180,6 +184,53 @@ public:
         return *this;
     }
 
+    base_uint& operator*=(uint32_t b32) {
+	    uint64_t carry = 0;
+	    for (int i = 0; i < WIDTH; i++) {
+	        uint64_t n = carry + (uint64_t)b32 * pn[i];
+	        pn[i] = n & 0xffffffff;
+	        carry = n >> 32;
+	    }
+	    return *this;
+	}
+
+	base_uint& operator*=(const base_uint& b) {
+	    base_uint a = *this;
+	    *this = 0;
+	    for (int j = 0; j < WIDTH; j++) {
+	        uint64_t carry = 0;
+	        for (int i = 0; i + j < WIDTH; i++) {
+	            uint64_t n = carry + pn[i + j] + (uint64_t)a.pn[j] * b.pn[i];
+	            pn[i + j] = n & 0xffffffff;
+	            carry = n >> 32;
+	        }
+	    }
+	    return *this;
+	}
+
+	base_uint& operator/=(const base_uint& b) {
+	    base_uint<BITS> div = b;     // make a copy, so we can shift.
+	    base_uint<BITS> num = *this; // make a copy, so we can subtract.
+	    *this = 0;                   // the quotient.
+	    int num_bits = num.bits();
+	    int div_bits = div.bits();
+	    if (div_bits == 0)
+	        throw uint_error("Division by zero");
+	    if (div_bits > num_bits) // the result is certainly 0.
+	        return *this;
+	    int shift = num_bits - div_bits;
+	    div <<= shift; // shift so that div and nun align.
+	    while (shift >= 0) {
+	        if (num >= div) {
+	            num -= div;
+	            pn[shift / 32] |= (1 << (shift & 31)); // set a bit of the result.
+	        }
+	        div >>= 1; // shift back.
+	        shift--;
+	    }
+	    // num now contains the remainder of the division.
+	    return *this;
+	}
 
     base_uint& operator++()
     {

@@ -27,7 +27,7 @@
 using namespace std;
 using namespace boost;
 
-static const int MAX_OUTBOUND_CONNECTIONS = 64;
+static const int MAX_OUTBOUND_CONNECTIONS = 512;
 
 bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 
@@ -74,12 +74,14 @@ static CSemaphore *semOutbound = NULL;
 static CNodeSignals g_signals;
 CNodeSignals& GetNodeSignals() { return g_signals; }
 
-void AddOneShot(string strDest) {
+void AddOneShot(string strDest)
+{
     LOCK(cs_vOneShots);
     vOneShots.push_back(strDest);
 }
 
-unsigned short GetListenPort() {
+unsigned short GetListenPort()
+{
     return (unsigned short)(GetArg("-port", Params().GetDefaultPort()));
 }
 
@@ -125,56 +127,58 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer)
     return ret;
 }
 
-bool CNode::RecvMsg(char *buf, int32_t buf_len) {
-	uint32_t buf_len_ = (buf_len = recv(hSocket, buf, buf_len, MSG_DONTWAIT));
-	if (buf_len < 0) {
-		int nErr = WSAGetLastError();
-		// socket error
-		if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
-			if (!fDisconnect) {
-				LogPrint("net", "Socket recv failed: (%d)\n", nErr);
-			}
-			CloseSocketDisconnect();
-		}
-		return false;
-	} else if (buf_len == 0) {
-		// socket closed
-		if (!fDisconnect) {
-			LogPrint("net", "Socket closed properly\n");
-		}
-		CloseSocketDisconnect();
-		return false;
-	}
-    while (buf_len > 0) { // absorb network data
-        if (vRecvMsg.empty() || vRecvMsg.back().complete()) {
-        	vRecvMsg.push_back(CNetMessage(SER_NETWORK, nRecvVersion));
+bool RecvLine(SOCKET hSocket, string& strLine)
+{
+    strLine = "";
+    while (true)
+    {
+        char c;
+        int nBytes = recv(hSocket, &c, 1, 0);
+        if (nBytes > 0)
+        {
+            if (c == '\n')
+                continue;
+            if (c == '\r')
+                return true;
+            strLine += c;
+            if (strLine.size() >= 9000)
+                return true;
         }
-        CNetMessage& msg = vRecvMsg.back();
-
-        int handled;
-        if (!msg.in_data) {
-            handled = msg.readHeader(buf, buf_len);
-		} else {
-			handled = msg.readData(buf, buf_len);
-		}
-        if (handled < 0) {
-			LogPrint("net", "Socket handled incorrectly on continuation\n");
-            CloseSocketDisconnect();
-            return false;
-        }
-        buf += handled;
-        buf_len -= handled;
-        if (msg.complete()) {
-            msg.nTime = GetTimeMicros();
+        else if (nBytes <= 0)
+        {
+            boost::this_thread::interruption_point();
+            if (nBytes < 0)
+            {
+                int nErr = WSAGetLastError();
+                if (nErr == WSAEMSGSIZE)
+                    continue;
+                if (nErr == WSAEWOULDBLOCK || nErr == WSAEINTR || nErr == WSAEINPROGRESS)
+                {
+                    MilliSleep(10);
+                    continue;
+                }
+            }
+            if (!strLine.empty())
+                return true;
+            if (nBytes == 0)
+            {
+                // socket closed
+                LogPrint("net", "socket closed\n");
+                return false;
+            }
+            else
+            {
+                // socket error
+                int nErr = WSAGetLastError();
+                LogPrint("net", "recv failed: %d\n", nErr);
+                return false;
+            }
         }
     }
-    nLastRecv = GetTime();
-    nRecvBytes += buf_len_;
-    RecordBytesRecv(buf_len_);
-    return true;
 }
 
-int GetnScore(const CService& addr) {
+int GetnScore(const CService& addr)
+{
     LOCK(cs_mapLocalHost);
     if (mapLocalHost.count(addr) == LOCAL_NONE)
         return 0;
@@ -218,7 +222,8 @@ void SetReachable(enum Network net, bool fFlag)
 }
 
 // learn a new local address
-bool AddLocal(const CService& addr, int nScore) {
+bool AddLocal(const CService& addr, int nScore)
+{
     if (!addr.IsRoutable())
         return false;
 
@@ -244,7 +249,8 @@ bool AddLocal(const CService& addr, int nScore) {
     return true;
 }
 
-bool AddLocal(const CNetAddr &addr, int nScore) {
+bool AddLocal(const CNetAddr &addr, int nScore)
+{
     return AddLocal(CService(addr, GetListenPort()), nScore);
 }
 
@@ -461,13 +467,15 @@ bool CNode::IsBanned(CNetAddr ip)
 
 bool CNode::Misbehaving(int howmuch)
 {
-    if (addr.IsLocal()) {
+    if (addr.IsLocal())
+    {
         LogPrintf("Warning: Local node %s misbehaving (delta: %d)!\n", addrName, howmuch);
         return false;
     }
 
     nMisbehavior += howmuch;
-    if (nMisbehavior >= GetArg("-banscore", 100)) {
+    if (nMisbehavior >= GetArg("-banscore", 100))
+    {
         int64_t banTime = GetTime()+GetArg("-bantime", 60*60*24);  // Default 24-hour ban
         LogPrintf("Misbehaving: %s (%d -> %d) DISCONNECTING\n", addr.ToString(), nMisbehavior-howmuch, nMisbehavior);
         {
@@ -520,6 +528,38 @@ void CNode::copyStats(CNodeStats &stats)
 }
 #undef X
 
+// requires LOCK(cs_vRecvMsg)
+bool CNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes)
+{
+    while (nBytes > 0) {
+
+        // get current incomplete message, or create a new one
+        if (vRecvMsg.empty() ||
+            vRecvMsg.back().complete())
+            vRecvMsg.push_back(CNetMessage(SER_NETWORK, nRecvVersion));
+
+        CNetMessage& msg = vRecvMsg.back();
+
+        // absorb network data
+        int handled;
+        if (!msg.in_data)
+            handled = msg.readHeader(pch, nBytes);
+        else
+            handled = msg.readData(pch, nBytes);
+
+        if (handled < 0)
+                return false;
+
+        pch += handled;
+        nBytes -= handled;
+
+        if (msg.complete())
+            msg.nTime = GetTimeMicros();
+    }
+
+    return true;
+}
+
 int CNetMessage::readHeader(const char *pch, unsigned int nBytes)
 {
     // copy data to temporary parsing buffer
@@ -566,6 +606,14 @@ int CNetMessage::readData(const char *pch, unsigned int nBytes)
 
     return nCopy;
 }
+
+
+
+
+
+
+
+
 
 // requires LOCK(cs_vSend)
 void SocketSendData(CNode *pnode)
@@ -774,13 +822,17 @@ void ThreadSocketHandler()
                 if (nErr != WSAEWOULDBLOCK)
                     LogPrintf("socket error accept failed: %d\n", nErr);
             }
-            else if (nInbound >= GetArg("-maxconnections", 255) - MAX_OUTBOUND_CONNECTIONS)
+            else if (nInbound >= GetArg("-maxconnections", 125) - MAX_OUTBOUND_CONNECTIONS)
             {
                 closesocket(hSocket);
-            } else if (CNode::IsBanned(addr)) {
+            }
+            else if (CNode::IsBanned(addr))
+            {
                 LogPrintf("connection from %s dropped (banned)\n", addr.ToString());
                 closesocket(hSocket);
-            } else {
+            }
+            else
+            {
                 LogPrint("net", "accepted connection %s\n", addr.ToString());
                 CNode* pnode = new CNode(hSocket, addr, "", true);
                 pnode->AddRef();
@@ -822,8 +874,35 @@ void ThreadSocketHandler()
                         pnode->CloseSocketDisconnect();
                     }
                     else {
-                        char tmp_buf[0x10000];
-                        pnode->RecvMsg(tmp_buf, sizeof(tmp_buf));
+                        // typical socket buffer is 8K-64K
+                        char pchBuf[0x10000];
+                        int nBytes = recv(pnode->hSocket, pchBuf, sizeof(pchBuf), MSG_DONTWAIT);
+                        if (nBytes > 0)
+                        {
+                            if (!pnode->ReceiveMsgBytes(pchBuf, nBytes))
+                                pnode->CloseSocketDisconnect();
+                            pnode->nLastRecv = GetTime();
+                            pnode->nRecvBytes += nBytes;
+                            pnode->RecordBytesRecv(nBytes);
+                        }
+                        else if (nBytes == 0)
+                        {
+                            // socket closed gracefully
+                            if (!pnode->fDisconnect)
+                                LogPrint("net", "socket closed\n");
+                            pnode->CloseSocketDisconnect();
+                        }
+                        else if (nBytes < 0)
+                        {
+                            // error
+                            int nErr = WSAGetLastError();
+                            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
+                            {
+                                if (!pnode->fDisconnect)
+                                    LogPrintf("socket recv error %d\n", nErr);
+                                pnode->CloseSocketDisconnect();
+                            }
+                        }
                     }
                 }
             }
@@ -844,8 +923,10 @@ void ThreadSocketHandler()
             // Inactivity checking
             //
             int64_t nTime = GetTime();
-            if (nTime - pnode->nTimeConnected > 60) {
-                if (pnode->nLastRecv == 0 || pnode->nLastSend == 0) {
+            if (nTime - pnode->nTimeConnected > 60)
+            {
+                if (pnode->nLastRecv == 0 || pnode->nLastSend == 0)
+                {
                     LogPrint("net", "socket no message in first 60 seconds, %d %d\n", pnode->nLastRecv != 0, pnode->nLastSend != 0);
                     pnode->fDisconnect = true;
                 }
@@ -894,14 +975,10 @@ void ThreadMapPort()
 #ifndef UPNPDISCOVER_SUCCESS
     /* miniupnpc 1.5 */
     devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0);
-#elif MINIUPNPC_API_VERSION < 14
+#else
     /* miniupnpc 1.6 */
     int error = 0;
     devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0, 0, &error);
-#else
-    /* miniupnpc 1.9.20150730 */
-    int error = 0;
-    devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0, 0, 2, &error);
 #endif
 
     struct UPNPUrls urls;
@@ -1080,7 +1157,8 @@ void static ProcessOneShot()
     }
 }
 
-void ThreadOpenConnections() {
+void ThreadOpenConnections()
+{
     // Connect to specific addresses
     if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
     {
@@ -1093,19 +1171,20 @@ void ThreadOpenConnections() {
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++)
                 {
-                    MilliSleep(50);
+                    MilliSleep(500);
                 }
             }
-            MilliSleep(50);
+            MilliSleep(500);
         }
     }
 
     // Initiate network connections
     int64_t nStart = GetTime();
-    while (true) {
+    while (true)
+    {
         ProcessOneShot();
 
-        MilliSleep(10);
+        MilliSleep(500);
 
         CSemaphoreGrant grant(*semOutbound);
         boost::this_thread::interruption_point();
@@ -1142,43 +1221,38 @@ void ThreadOpenConnections() {
         int64_t nANow = GetAdjustedTime();
 
         int nTries = 0;
-        while (true) {
+        while (true)
+        {
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr))
                 break;
 
-            // If we didn't find an appropriate destination after trying 512 addresses fetched from addrman,
+            // If we didn't find an appropriate destination after trying 100 addresses fetched from addrman,
             // stop this loop, and let the outer loop run again (which sleeps, adds seed nodes, recalculates
             // already-connected network ranges, ...) before trying new addrman addresses.
             nTries++;
-            if (nTries > 512) {
+            if (nTries > 100)
                 break;
-            }
 
-            if (IsLimited(addr)) {
+            if (IsLimited(addr))
                 continue;
-            }
 
             // only consider very recently tried nodes after 30 failed attempts
-            if (nANow - addr.nLastTry < 600 && nTries < 30) {
+            if (nANow - addr.nLastTry < 600 && nTries < 30)
                 continue;
-            }
 
             // do not allow non-default ports, unless after 50 invalid addresses selected already
-            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50) {
+            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50)
                 continue;
-            }
 
             addrConnect = addr;
             break;
         }
 
-        if (addrConnect.IsValid()) {
+        if (addrConnect.IsValid())
             OpenNetworkConnection(addrConnect, &grant);
-        }
-        MilliSleep(50);
     }
 }
 
@@ -1201,9 +1275,9 @@ void ThreadOpenAddedConnections()
                 CAddress addr;
                 CSemaphoreGrant grant(*semOutbound);
                 OpenNetworkConnection(addr, &grant, strAddNode.c_str());
-                MilliSleep(25);
+                MilliSleep(500);
             }
-            MilliSleep(5*1000); // Retry every 5 seconds
+            MilliSleep(120000); // Retry every 2 minutes
         }
     }
 
@@ -1248,9 +1322,9 @@ void ThreadOpenAddedConnections()
         {
             CSemaphoreGrant grant(*semOutbound);
             OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
-            MilliSleep(25);
+            MilliSleep(500);
         }
-        MilliSleep(5*1000); // Retry every 5 seconds
+        MilliSleep(120000); // Retry every 2 minutes
     }
 }
 
@@ -1260,6 +1334,7 @@ bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOu
     //
     // Initiate outbound network connection
     //
+    boost::this_thread::interruption_point();
     if (!strDest)
         if (IsLocal(addrConnect) ||
             FindNode((CNetAddr)addrConnect) || CNode::IsBanned(addrConnect) ||
@@ -1269,6 +1344,7 @@ bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOu
         return false;
 
     CNode* pnode = ConnectNode(addrConnect, strDest);
+    boost::this_thread::interruption_point();
 
     if (!pnode)
         return false;
@@ -1387,7 +1463,7 @@ void ThreadMessageHandler()
         }
 
         if (fSleep)
-            MilliSleep(25);
+            MilliSleep(100);
     }
 }
 
@@ -1556,7 +1632,7 @@ void StartNode(boost::thread_group& threadGroup)
 {
     if (semOutbound == NULL) {
         // initialize semaphore
-        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 128));
+        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 125));
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
