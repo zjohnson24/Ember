@@ -12,7 +12,7 @@ DEFINES += QT_GUI
 DEFINES += __NO_SYSTEM_INCLUDES
 CONFIG += no_include_pwd
 CONFIG += thread
-CONFIG += static
+windows:CONFIG += static
 
 windows:QMAKE_CXXFLAGS_RELEASE -= -O2
 windows:QMAKE_CXXFLAGS_RELEASE = -Os
@@ -319,8 +319,6 @@ HEADERS += src/qt/bitcoingui.h \
     src/threadsafety.h \
     src/tinyformat.h \
     src/qt/updater.h
-win32:HEADERS += src/get_exe_path.h
-
 
 SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/transactiontablemodel.cpp \
@@ -399,7 +397,6 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/scrypt.cpp \
     src/pbkdf2.cpp \
     src/qt/updater.cpp
-win32:SOURCES += src/get_exe_path.cpp
 
 RESOURCES += \
     src/qt/bitcoin.qrc
