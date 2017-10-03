@@ -138,7 +138,7 @@ void Download::ShowDL() {
 void Download::Update() {
 	#ifdef _WIN32
 	boost::filesystem::path tmp = boost::filesystem::unique_path();
-	const std::string dst_str = QCoreApplication::applicationFilePath();
+    const std::string dst_str = QCoreApplication::applicationFilePath().toStdString();
 	const std::string tmp_str = TmpPath.string()+tmp.string();
 	const std::string src_str = TmpPath.string()+"Ember-qt.exe";
 	LogPrintf("updater: Currently running exe: \"%s\"\n", dst_str);
