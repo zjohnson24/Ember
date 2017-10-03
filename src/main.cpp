@@ -998,7 +998,10 @@ float lerp(double a, double b, double f) {
 CBigNum CoinCCInterest(CBigNum P, double r, double t) {
     int64_t amount;
     r = pow(E, r*t);
-    std::string r_str = boost::lexical_cast<std::string>(r);
+    std::ostringstream ss;
+    ss.imbue(std::locale::classic());
+    ss << r;
+    std::string r_str = ss.str();
     if (!ParseFixedPoint(r_str, 8, &amount)) {
         LogPrintf("COINage Invalid amount! r_str: %s (P=%s r=%d t=%d)\n", r_str, P, r, t);
         throw std::runtime_error("CoinCCInterest() : Error converting double r to fixed point");
