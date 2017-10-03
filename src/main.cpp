@@ -1061,9 +1061,10 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
 
         // Read block header
         CBlock block;
-        if (!block.ReadFromDisk(txindex.pos.nFile, txindex.pos.nBlockPos, false))
+        if (!block.ReadFromDisk(txindex.pos.nFile, txindex.pos.nBlockPos, false)) {
             LogPrintf("CreateCoinStake : unable to read block of previous transaction\n");
             return false;
+        }
         if (block.GetBlockTime() + nStakeMinAge > t)
             continue; // only count coins meeting min age requirement
 
