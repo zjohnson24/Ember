@@ -399,7 +399,11 @@ bool AppInit2(boost::thread_group& threadGroup)
     ReadConfigFile(mapArgs, mapMultiArgs);
 
     if(!GetBoolArg("-testnet", false)) {
-        mapMultiArgs["-seednode"].push_back("seednode=172.31.38.105:10024");  // abc - aws
+		mapMultiArgs["-seednode"].push_back("seednode=52.14.34.11:10024");    // abc - emb_seed_4
+		mapMultiArgs["-seednode"].push_back("seednode=18.221.237.90:10024");  // abc - emb_seed_3
+		mapMultiArgs["-seednode"].push_back("seednode=18.221.163.115:10024"); // abc - emb_seed_2
+		mapMultiArgs["-seednode"].push_back("seednode=18.220.9.219:10024");   // abc - emb_seed_1
+		mapMultiArgs["-seednode"].push_back("seednode=18.220.162.65:10024");  // abc - emb_seed_0
         mapMultiArgs["-seednode"].push_back("seednode=107.161.31.84:10024");  // abc - red
         mapMultiArgs["-seednode"].push_back("seednode=107.161.30.232:10024"); // abc - blue
         mapMultiArgs["-seednode"].push_back("seednode=51.15.198.252:10024");  // konez2k - vps
