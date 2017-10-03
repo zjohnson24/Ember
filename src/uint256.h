@@ -209,8 +209,8 @@ public:
 	}
 
 	base_uint& operator/=(const base_uint& b) {
-	    base_uint<BITS> div = b;     // make a copy, so we can shift.
-	    base_uint<BITS> num = *this; // make a copy, so we can subtract.
+	    base_uint div = b;     // make a copy, so we can shift.
+	    base_uint num = *this; // make a copy, so we can subtract.
 	    *this = 0;                   // the quotient.
 	    int num_bits = num.bits();
 	    int div_bits = div.bits();

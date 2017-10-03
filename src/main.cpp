@@ -1006,8 +1006,7 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
         LogPrintf("COINage Invalid amount! r_str: %s (P=%s r=%d t=%d)\n", r_str, P, r, t);
         throw std::runtime_error("CoinCCInterest() : Error converting double r to fixed point");
     }
-    P = P * CBigNum(amount);
-    return P;
+    return P * CBigNum(amount);
 }
 
 // miner's coin stake reward based on coin age spent (coin-days)
