@@ -1072,10 +1072,11 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
             continue; // only count coins meeting min age requirement
 
         Coins = txPrev.vout[txin.prevout.n].nValue;
+        // 50000000000000
         Age = (t-txPrev.nTime);
         bnCentSecond += Coins * Age / CENT;
         nSubsidyFactually = nSubsidyFactually + CoinCCInterest(Coins, Rate, Age/(365.25 * 24 * 3600));
-        LogPrintf("COINage coin*age Coins=%s nTimeDiff=%d bnCentSecond=%s Age=%d AgeOverYearSeconds=%d SubsidyFactually=%s\n", Coins.ToString(), t - txPrev.nTime, bnCentSecond.ToString(), Age, Age/(365.25 * 24 * 3600), nSubsidyFactually.ToString());
+        LogPrintf("COINage coin*age Coins=%s nTimeDiff=%d bnCentSecond=%s Age=%d AgeOverYearSeconds=%d SubsidyFactually=%s Rate=%d\n", Coins.ToString(), t - txPrev.nTime, bnCentSecond.ToString(), Age, Age/(365.25 * 24 * 3600), nSubsidyFactually.ToString(), Rate);
     }
 
     bnCoinDay = bnCentSecond * CENT / COIN / (24 * 60 * 60);
@@ -1084,13 +1085,13 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
 
 coinbase_skip:
 
-    int64_t nSubsidy = nCoinAge * 7200 * 1000000 * 33 / (365 * 33 + 8);
+    int64_t nSubsidy = nCoinAge * 7200 * CENT * 33 / (365 * 33 + 8);
     bnCoinDay *= 7200;
     bnCoinDay *= 1000000;
     bnCoinDay *= 33;
     bnCoinDay /= (365 * 33 + 8);
 
-    LogPrintf("COIN creation: GetProofOfStakeReward(): create=%s create_bf=%s create_new=%s nCoinAge=%d\n", FormatMoney(nSubsidy),  bnCoinDay.ToString(), nSubsidyFactually.ToString(), nCoinAge);
+    LogPrintf("COIN creation: GetProofOfStakeReward(): create=%s create(as_int64_t)=%d create_bf=%s create_new=%s nCoinAge=%d\n", FormatMoney(nSubsidy), nSubsidy, bnCoinDay.ToString(), nSubsidyFactually.ToString(), nCoinAge);
 
     old_reward = nSubsidy + nFees;
     old_reward_bf = bnCoinDay + CBigNum(nFees);
