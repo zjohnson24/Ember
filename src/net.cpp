@@ -9,6 +9,7 @@
 #include "main.h"
 #include "addrman.h"
 #include "ui_interface.h"
+#include "init.h"
 
 #ifdef WIN32
 #include <string.h>
@@ -1184,7 +1185,7 @@ void ThreadOpenConnections()
 
     // Initiate network connections
     int64_t nStart = GetTime();
-    while (true)
+    while (!ShutdownRequested())
     {
         ProcessOneShot();
 
