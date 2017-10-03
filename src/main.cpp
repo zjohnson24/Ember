@@ -1017,10 +1017,19 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
     CBigNum Coins = 0;
     double Rate;
     int64_t t = tx.nTime;
-    time_t past = APPROX(2017, 11, 0, 0, 0, 0);
-    time_t future = APPROX(2017, 11, 3, 0, 0, 0);
-    time_t far_future = APPROX(2018, 11, 0, 0, 0, 0);
-    time_t far_far_future = APPROX(2019, 11, 0, 0, 0, 0);
+
+    if (TestNet()) {
+        time_t past = APPROX(2017, 10, 3, 0, 0, 0);
+        time_t future = APPROX(2017, 10, 4, 1, 0, 0);
+        time_t far_future = APPROX(2017, 10, 4, 10, 0, 0);
+        time_t far_far_future = APPROX(2017, 10, 4, 20, 0, 0);
+    } else {
+        // main net
+        time_t past = APPROX(2017, 11, 0, 0, 0, 0);
+        time_t future = APPROX(2017, 11, 3, 0, 0, 0);
+        time_t far_future = APPROX(2018, 11, 0, 0, 0, 0);
+        time_t far_far_future = APPROX(2019, 11, 0, 0, 0, 0);
+    }
     CBigNum nSubsidyFactually(0);
 
     if (t > far_far_future) {
