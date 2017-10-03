@@ -1006,8 +1006,7 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
         LogPrintf("COINage Invalid amount! r_str: %s (P=%s r=%d t=%d)\n", r_str, P, r, t);
         throw std::runtime_error("CoinCCInterest() : Error converting double r to fixed point");
     }
-    P = P * CBigNum(amount);
-    return P;
+    return P * CBigNum(amount);
 }
 
 // miner's coin stake reward based on coin age spent (coin-days)
@@ -1085,6 +1084,7 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
         Age = (t-txPrev.nTime);
         bnCentSecond += Coins * Age / CENT;
         nSubsidyFactually = nSubsidyFactually + CoinCCInterest(Coins, Rate, Age/(365.25 * 24 * 3600));
+        nSubsidyFactually /= CBigNum(COIN);
         LogPrintf("COINage coin*age Coins=%s nTimeDiff=%d bnCentSecond=%s Age=%d AgeOverYearSeconds=%d SubsidyFactually=%s Rate=%d\n", Coins.ToString(), t - txPrev.nTime, bnCentSecond.ToString(), Age, Age/(365.25 * 24 * 3600), nSubsidyFactually.ToString(), Rate);
     }
 

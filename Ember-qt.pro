@@ -81,7 +81,7 @@ isEmpty(OPENSSL_INCLUDE_PATH) {
 
 isEmpty(OPENSSL_LIB_PATH) {
     macx:OPENSSL_LIB_PATH = /usr/local/Cellar/openssl/1.0.2l/lib
-    windows:OPENSSL_INCLUDE_PATH=$$PWD/inc/openssl-1.0.2l
+    windows:OPENSSL_LIB_PATH=$$PWD/libs
 }
 
 isEmpty(BDB_LIB_PATH) {
