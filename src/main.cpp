@@ -1000,7 +1000,7 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
     r = pow(E, r*t);
     std::string r_str = boost::lexical_cast<std::string>(r);
     if (!ParseFixedPoint(r_str, 8, &amount)) {
-        LogPrint("coinage", "Invalid amount! r_str: %s (P=%s r=%d t=%d)\n", r_str, P, r, t);
+        LogPrintf("COINage Invalid amount! r_str: %s (P=%s r=%d t=%d)\n", r_str, P, r, t);
         throw std::runtime_error("CoinCCInterest() : Error converting double r to fixed point");
     }
     P = P * CBigNum(amount);
