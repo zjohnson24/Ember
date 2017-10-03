@@ -1049,7 +1049,7 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
         goto coinbase_skip;
 
     BOOST_FOREACH(const CTxIn& txin, tx.vin) {
-        // First try finding the previous transaction in database
+    	// First try finding the previous transaction in database
         CTransaction txPrev;
         CTxIndex txindex;
         if (!txPrev.ReadFromDisk(txdb, txin.prevout, txindex))
@@ -1071,11 +1071,11 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
         Age = (t-txPrev.nTime);
         bnCentSecond += Coins * Age / CENT;
         nSubsidyFactually = nSubsidyFactually + CoinCCInterest(Coins, Rate, Age/(365.25 * 24 * 3600));
-        LogPrint("coinage", "coin*age Coins=%s nTimeDiff=%d bnCentSecond=%s Age=%d AgeOverYearSeconds=%d SubsidyFactually=%s\n", Coins.ToString(), t - txPrev.nTime, bnCentSecond.ToString(), Age, Age/(365.25 * 24 * 3600), nSubsidyFactually.ToString());
+        LogPrintf("COINage coin*age Coins=%s nTimeDiff=%d bnCentSecond=%s Age=%d AgeOverYearSeconds=%d SubsidyFactually=%s\n", Coins.ToString(), t - txPrev.nTime, bnCentSecond.ToString(), Age, Age/(365.25 * 24 * 3600), nSubsidyFactually.ToString());
     }
 
     bnCoinDay = bnCentSecond * CENT / COIN / (24 * 60 * 60);
-    LogPrint("coinage", "coin*age bnCoinDay=%s\n", bnCoinDay.ToString());
+    LogPrintf("COINage coin*age bnCoinDay=%s\n", bnCoinDay.ToString());
     nCoinAge = (int64_t)bnCoinDay.getuint64();
 
 coinbase_skip:
@@ -1086,7 +1086,7 @@ coinbase_skip:
     bnCoinDay *= 33;
     bnCoinDay /= (365 * 33 + 8);
 
-    LogPrint("creation", "GetProofOfStakeReward(): create=%s create_bf=%s create_new=%s nCoinAge=%d\n", FormatMoney(nSubsidy),  bnCoinDay.ToString(), nSubsidyFactually.ToString(), nCoinAge);
+    LogPrintf("COIN creation: GetProofOfStakeReward(): create=%s create_bf=%s create_new=%s nCoinAge=%d\n", FormatMoney(nSubsidy),  bnCoinDay.ToString(), nSubsidyFactually.ToString(), nCoinAge);
 
     old_reward = nSubsidy + nFees;
     old_reward_bf = bnCoinDay + CBigNum(nFees);
