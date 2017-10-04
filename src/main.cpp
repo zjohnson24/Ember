@@ -1004,12 +1004,16 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
     ss << (1.0L+(r*t));
     std::string v_str = ss.str();
     if (!ParseFixedPoint(v_str, 8, &amount)) {
-        LogPrintf("\nCOINage Invalid amount! v_str: %s\n", v_str);
         throw std::runtime_error("COINage CoinCCInterest() : Error converting double v to fixed point\n");
     }
-    ret *= amount;
-    LogPrintf(" => P+I=%s", ret.ToString());
-    ret -= P;
+    if (amount < 0) {
+    	throw std::runtime_error("COINage CoinCCInterest() : (amount < 0) Error converting double v to fixed point\n");
+    }
+    LogPrintf(" => v_str: %s", v_str);
+
+    ret = ret * CBigNum(amount);
+    LogPrintf(" => amount: %d => P+I=%s", amount, ret.ToString());
+    ret = ret - P;
    	LogPrintf(" => ret=%s\n", ret.ToString());
     return ret;
 }
@@ -1018,7 +1022,7 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
 bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t &old_reward, CBigNum &old_reward_bf, CBigNum &new_reward) {
 	int64_t nCoinAge = 0;
 	uint64_t Age = 0;
-    CBigNum Coins = 0;
+    CBigNum Coins(0);
     double Rate;
     int64_t t = tx.nTime;
 
@@ -1093,8 +1097,8 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
         // 50000000000000
         Age = (t-txPrev.nTime);
         bnCentSecond += Coins * Age / CENT;
-        nSubsidyFactually = nSubsidyFactually + CoinCCInterest(Coins, Rate, Age/(365.25 * 24 * 3600));
-        nSubsidyFactually /= CBigNum(COIN);
+        Coins /= COIN;
+        nSubsidyFactually += CoinCCInterest(Coins, Rate, Age/(365.25 * 24 * 3600));
         LogPrintf("COINage coin*age Coins=%s nTimeDiff=%d bnCentSecond=%s Age=%d AgeOverYearSeconds=%d SubsidyFactually=%s Rate=%d\n", Coins.ToString(), t - txPrev.nTime, bnCentSecond.ToString(), Age, Age/(365.25 * 24 * 3600), nSubsidyFactually.ToString(), Rate);
     }
 
