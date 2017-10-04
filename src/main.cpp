@@ -998,18 +998,20 @@ float lerp(double a, double b, double f) {
 CBigNum CoinCCInterest(CBigNum P, double r, double t) {
 	int64_t amount;
 	CBigNum ret(P);
-    double v = (1+(r*t));
+	LogPrintf("COINage CoinCCInterest (P=%s r=%d t=%d)", P.ToString(), r, t);
     std::ostringstream ss;
     ss.imbue(std::locale::classic());
-    ss << v;
+    ss << (1.0L+(r*t));
     std::string v_str = ss.str();
     if (!ParseFixedPoint(v_str, 8, &amount)) {
-        LogPrintf("COINage Invalid amount! v_str: %s (P=%s r=%d t=%d)\n", v_str, P.ToString(), r, t);
-        throw std::runtime_error("COINage CoinCCInterest() : Error converting double v to fixed point");
+        LogPrintf("\nCOINage Invalid amount! v_str: %s\n", v_str);
+        throw std::runtime_error("COINage CoinCCInterest() : Error converting double v to fixed point\n");
     }
     ret *= amount;
-    LogPrintf("COINage CoinCCInterest (P=%s r=%d t=%d) => P+I=%s => ret=%s\n", P.ToString(), ret.ToString(), r, t, ret, (ret - P));
-    return ret - P;
+    LogPrintf(" => P+I=%s", ret.ToString());
+    ret -= P;
+   	LogPrintf(" => ret=%s\n", ret.ToString());
+    return ret;
 }
 
 // miner's coin stake reward based on coin age spent (coin-days)
