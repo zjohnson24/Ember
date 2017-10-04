@@ -996,26 +996,26 @@ float lerp(double a, double b, double f) {
 }
 
 CBigNum CoinCCInterest(CBigNum P, double r, double t) {
-	int64_t amount;
-	CBigNum ret(P);
-	LogPrintf("COINage CoinCCInterest (P=%s r=%d t=%d)", P.ToString(), r, t);
-	r = pow(E, r*t);
+    int64_t amount;
+    double I;
+
+    LogPrintf("COINage CoinCCInterest (P=%s r=%d t=%d)", P.ToString(), r, t);
+
+    I = P.getint() * (pow(E, r*t) - 1);
     std::ostringstream ss;
     ss.imbue(std::locale::classic());
-    ss << r;
-    std::string r_str = ss.str();
-    if (!ParseFixedPoint(r_str, 8, &amount)) {
+    ss << I;
+    std::string i_str = ss.str();
+    if (!ParseFixedPoint(i_str, 8, &amount)) {
         throw std::runtime_error("COINage CoinCCInterest() : E^(r*t) Error converting double to fixed point\n");
     }
     if (amount < 0) {
-    	throw std::runtime_error("COINage CoinCCInterest() : ((E^(r*t)) < 0) Error converting double to fixed point\n");
+        throw std::runtime_error("COINage CoinCCInterest() : ((E^(r*t)) < 0) Error converting double to fixed point\n");
     }
-    LogPrintf(" => r_str: %s => amount: %d", r_str, amount);
-    ret = ret * CBigNum(amount);
-    LogPrintf(" => P+I=%s", ret.ToString());
-    ret = ret - P;
-   	LogPrintf(" => ret=%s\n", ret.ToString());
-    return ret;
+
+    LogPrintf("I = %d - Ret: %d\n", I, CBigNum(amount).ToString());
+
+    return CBigNum(amount);
 }
 
 // miner's coin stake reward based on coin age spent (coin-days)
