@@ -1638,11 +1638,17 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
             }
 
         } else {
-            if ((nStakeReward_bf > nCalculatedStakeReward_bf) || (nNewStakeReward > nNewCalculatedStakeReward)) {
-                return DoS(100, error("ConnectBlock() : coinstake pays too much\n\t(actual_bf=%s vs calculated_bf=%s)\n\t(actual_new=%s vs calculated_new=%s)\n",
-                                      nStakeReward_bf.ToString(), nCalculatedStakeReward_bf.ToString(),
+            if ((nStakeReward_bf > nCalculatedStakeReward_bf)) {
+                return DoS(100, error("ConnectBlock() : coinstake pays too much\n\t(actual_bf=%s vs calculated_bf=%s)\n",
+                                      nStakeReward_bf.ToString(), nCalculatedStakeReward_bf.ToString()));
+            }
+            if (nNewStakeReward == nCalculatedStakeReward_bf) {
+                LogPrintf("ConnectBlock() : coinstake is old on block! (actual_new=%s == calculated_bf=%s)", nNewStakeReward.ToString(), nCalculatedStakeReward_bf.ToString());
+            } else if (nNewStakeReward > nNewCalculatedStakeReward) {
+                return DoS(100, error("ConnectBlock() : coinstake pays too much\n\t(nNewStakeReward > nNewCalculatedStakeReward)\n",
                                       nNewStakeReward.ToString(), nNewCalculatedStakeReward.ToString()));
             }
+
             if ((nStakeReward_bf < nCalculatedStakeReward_bf) || (nNewStakeReward < nNewCalculatedStakeReward)) {
                 LogPrintf("ConnectBlock() : coinstake pays TOO LITTLE!\n\t(actual_bf=%s vs calculated_bf=%s)\n\t(actual_new=%s vs calculated_new=%s)\n",
                           nStakeReward_bf.ToString(), nCalculatedStakeReward_bf.ToString(),
