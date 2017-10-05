@@ -15,7 +15,6 @@
 #include "wallet.h"
 #include "ui_interface.h"
 #include "paymentserver.h"
-#include "updater.h"
 #include "compat.h"
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
@@ -300,8 +299,6 @@ int main(int argc, char *argv[])
                 QObject::connect(paymentServer, SIGNAL(receivedURI(QString)), &window, SLOT(handleURI(QString)));
                 QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
 
-                threadGroup.create_thread(boost::bind(&ThreadUpdater, boost::ref(guiref)));
-
                 app.exec();
 
                 window.hide();
@@ -326,31 +323,6 @@ int main(int argc, char *argv[])
     } catch (...) {
         handleRunawayException(NULL);
     }
-
-    #ifdef _WIN32
-    if (updating) {
-    	LogPrintf("updater: Starting new process with name: \"%s\"!\n", updating_to);
-		/* CreateProcess API initialization */
-		STARTUPINFOA siStartupInfo;
-		PROCESS_INFORMATION piProcessInfo;
-		memset(&siStartupInfo, 0, sizeof(siStartupInfo));
-		memset(&piProcessInfo, 0, sizeof(piProcessInfo));
-		siStartupInfo.cb = sizeof(siStartupInfo);
-
-		LogPrintf("updater: I am dying immediately!\n");
-		LogPrintf("================================\n");
-		CreateProcessA(updating_to, // application name/path
-					NULL, // command line (optional)
-					NULL, // no process attributes (default)
-					NULL, // default security attributes
-					false,
-					CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_CONSOLE,
-					NULL, // default env
-					NULL, // default working dir
-					&siStartupInfo,
-					&piProcessInfo);
-    }
-    #endif
 
     return 0;
 }
