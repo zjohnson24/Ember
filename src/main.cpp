@@ -1607,9 +1607,11 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
             return DoS(50, error("ConnectBlock() : coinbase reward exceeded (actual=%d vs calculated=%d)",
                    vtx[0].GetValueOut(),
                    nReward));
+        // PoW ppcoin: track money supply and mint amount info
+        pindex->nMint = nReward + nFees;
+        pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nReward;
     }
-    if (IsProofOfStake())
-    {
+    if (IsProofOfStake()) {
         // ppcoin: coin stake tx earns reward instead of paying fee
         int64_t nCalculatedStakeReward;
         CBigNum nCalculatedStakeReward_bf;
@@ -1630,11 +1632,13 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 
         if (time_on_block < past) {
             if (nStakeReward_bf > nCalculatedStakeReward_bf) {
-                return DoS(100, error("ConnectBlock() : coinstake pays too much(actual_bf=%s vs calculated_bf=%s)", nStakeReward_bf.ToString(), nCalculatedStakeReward_bf.ToString()));
+                return DoS(100, error("ConnectBlock() : coinstake pays too much(actual_bf=%s vs calculated_bf=%s)\n",
+                                      nStakeReward_bf.ToString(), nCalculatedStakeReward_bf.ToString()));
             }
 
             if (nStakeReward_bf < nCalculatedStakeReward_bf) {
-                LogPrintf("ConnectBlock() : coinstake pays TOO LITTLE! (actual_bf=%s vs calculated_bf=%s)", nStakeReward_bf.ToString(), nCalculatedStakeReward_bf.ToString());
+                LogPrintf("ConnectBlock() : coinstake pays TOO LITTLE! (actual_bf=%s vs calculated_bf=%s)\n",
+                          nStakeReward_bf.ToString(), nCalculatedStakeReward_bf.ToString());
             }
 
         } else {
@@ -1643,9 +1647,11 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
                                       nStakeReward_bf.ToString(), nCalculatedStakeReward_bf.ToString()));
             }
             if (nNewStakeReward == nCalculatedStakeReward_bf) {
-                LogPrintf("ConnectBlock() : coinstake is old on block! (actual_new=%s == calculated_bf=%s)", nNewStakeReward.ToString(), nCalculatedStakeReward_bf.ToString());
+                LogPrintf("ConnectBlock() : coinstake is old on block! (actual_new=%s == calculated_bf=%s)\n",
+                          nNewStakeReward.ToString(), nCalculatedStakeReward_bf.ToString());
+
             } else if (nNewStakeReward > nNewCalculatedStakeReward) {
-                return DoS(100, error("ConnectBlock() : coinstake pays too much\n\t(nNewStakeReward > nNewCalculatedStakeReward)\n",
+                return DoS(100, error("ConnectBlock() : coinstake pays too much\n\t(nNewStakeReward=%s > nNewCalculatedStakeReward=%s)\n",
                                       nNewStakeReward.ToString(), nNewCalculatedStakeReward.ToString()));
             }
 
@@ -1655,11 +1661,17 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
                           nNewStakeReward.ToString(), nNewCalculatedStakeReward.ToString());
             }
         }
+
+        // PoS ppcoin: track money supply and mint amount info
+        if (time_on_block < past) {
+            pindex->nMint = nCalculatedStakeReward_bf.getuint64() + nFees;
+            pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nCalculatedStakeReward_bf.getuint64();
+        } else {
+            pindex->nMint = nNewCalculatedStakeReward.getuint64() + nFees;
+            pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nNewCalculatedStakeReward.getuint64();
+        }
     }
 
-    // ppcoin: track money supply and mint amount info
-    pindex->nMint = nValueOut - nValueIn + nFees;
-    pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
 
