@@ -1165,10 +1165,9 @@ void static ProcessOneShot()
 void ThreadOpenConnections()
 {
     // Connect to specific addresses
-    if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
-    {
-        for (int64_t nLoop = 0;; nLoop++)
-        {
+    if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0) {
+        for (int64_t nLoop = 0; !ShutdownRequested(); nLoop++) {
+            boost::this_thread::interruption_point();
             ProcessOneShot();
             BOOST_FOREACH(string strAddr, mapMultiArgs["-connect"])
             {
@@ -1225,7 +1224,7 @@ void ThreadOpenConnections()
         int64_t nANow = GetAdjustedTime();
 
         int nTries = 0;
-        while (true) {
+        while (!ShutdownRequested()) {
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
