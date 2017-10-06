@@ -977,21 +977,26 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
     int64_t amount;
     double I;
 
-    LogPrintf("COINage CoinCCInterest (P=%s r=%d t=%d)", P.ToString(), r, t);
-
-    I = P.getuint64() * (pow(E, r*t) - 1);
+    LogPrintf("CoinCCInterest (P=%s r=%d t=%d) ", P.ToString(), r, t);
+    if (P < 0) {
+        return CBigNum(0);
+    }
+    I = P.getuint64() * (pow(E, r*t) - 1.0L);
     std::ostringstream ss;
     ss.imbue(std::locale::classic());
     ss << I;
     std::string i_str = ss.str();
+    LogPrintf("i_str=%s ", i_str);
     if (!ParseFixedPoint(i_str, 8, &amount)) {
-        throw std::runtime_error("COINage CoinCCInterest() : E^(r*t) Error converting double to fixed point\n");
+        throw std::runtime_error("CoinCCInterest  E^(r*t) Error converting double to fixed point!\n");
     }
+    LogPrintf("amount=%d ", amount);
     if (amount < 0) {
-        throw std::runtime_error("COINage CoinCCInterest() : ((E^(r*t)) < 0) Error converting double to fixed point\n");
+        I = 0.0L;
+        amount = 0;
     }
 
-    LogPrintf("I = %d - Ret: %d\n", I, CBigNum(amount).ToString());
+    LogPrintf("I = %d - Ret: %s\n", I, CBigNum(amount).ToString());
 
     return CBigNum(amount);
 }
@@ -1030,9 +1035,9 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
     } else if (t > future) {
         Rate = lerp(7.2L, 0.72L, quad_ease_io((t-future)/(far_future-future)));
     } else if (t > past) {
-        Rate = lerp(72.0L, 7.2L, quad_ease_io((t-past)/(future-past)));
+        Rate = lerp((72.0L * 33 / (365 * 33.0L + 8)), 7.2L, quad_ease_io((t-past)/(future-past)));
     } else {
-        Rate = (72.0L / (365 + 8));
+        Rate = (72.0L * 33 / (365 * 33.0L + 8));
         // 0.1930294906166219839142091152815
         // 19712934
     }
