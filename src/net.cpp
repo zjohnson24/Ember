@@ -1185,14 +1185,13 @@ void ThreadOpenConnections()
 
     // Initiate network connections
     int64_t nStart = GetTime();
-    while (!ShutdownRequested())
-    {
+    while (!ShutdownRequested()) {
+        boost::this_thread::interruption_point();
         ProcessOneShot();
 
         MilliSleep(500);
 
         CSemaphoreGrant grant(*semOutbound);
-        boost::this_thread::interruption_point();
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
         if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
@@ -1226,8 +1225,7 @@ void ThreadOpenConnections()
         int64_t nANow = GetAdjustedTime();
 
         int nTries = 0;
-        while (true)
-        {
+        while (true) {
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
@@ -1269,7 +1267,8 @@ void ThreadOpenAddedConnections()
     }
 
     if (HaveNameProxy()) {
-        while(true) {
+        while(!ShutdownRequested()) {
+            boost::this_thread::interruption_point();
             list<string> lAddresses(0);
             {
                 LOCK(cs_vAddedNodes);
@@ -1282,12 +1281,17 @@ void ThreadOpenAddedConnections()
                 OpenNetworkConnection(addr, &grant, strAddNode.c_str());
                 MilliSleep(500);
             }
-            MilliSleep(120000); // Retry every 2 minutes
+            // Retry every 2 minutes
+            for (int i=0; i<(60*2) && !ShutdownRequested(); i++) {
+                MilliSleep(1000);
+            }
         }
     }
 
-    for (unsigned int i = 0; true; i++)
+    for (unsigned int i = 0; !ShutdownRequested(); i++)
     {
+        boost::this_thread::interruption_point();
+
         list<string> lAddresses(0);
         {
             LOCK(cs_vAddedNodes);
@@ -1325,11 +1329,17 @@ void ThreadOpenAddedConnections()
         }
         BOOST_FOREACH(vector<CService>& vserv, lservAddressesToAdd)
         {
+            boost::this_thread::interruption_point();
+            MilliSleep(500);
             CSemaphoreGrant grant(*semOutbound);
             OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
-            MilliSleep(500);
+
         }
-        MilliSleep(120000); // Retry every 2 minutes
+        // Retry every 2 minutes
+        for (int i=0; i<(60*2) && !ShutdownRequested(); i++) {
+            MilliSleep(1000);
+        }
+
     }
 }
 
@@ -1403,8 +1413,8 @@ void static StartSync(const vector<CNode*> &vNodes) {
 void ThreadMessageHandler()
 {
     SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
-    while (true)
-    {
+    while (!ShutdownRequested()) {
+        boost::this_thread::interruption_point();
         bool fHaveSyncNode = false;
 
         vector<CNode*> vNodesCopy;
@@ -1417,7 +1427,6 @@ void ThreadMessageHandler()
                     fHaveSyncNode = true;
             }
         }
-
         if (!fHaveSyncNode)
             StartSync(vNodesCopy);
 
@@ -1460,7 +1469,6 @@ void ThreadMessageHandler()
             }
             boost::this_thread::interruption_point();
         }
-
         {
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodesCopy)
@@ -1468,7 +1476,7 @@ void ThreadMessageHandler()
         }
 
         if (fSleep)
-            MilliSleep(100);
+            MilliSleep(200);
     }
 }
 
