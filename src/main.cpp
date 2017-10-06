@@ -973,35 +973,13 @@ int64_t GetProofOfWorkReward(int64_t nHeight, int64_t nFees) {
     return nSubsidy + nFees;
 }
 
-static const unsigned short days[4][12] = {
-    {   0,  31,  60,  91, 121, 152, 182, 213, 244, 274, 305, 335},
-    { 366, 397, 425, 456, 486, 517, 547, 578, 609, 639, 670, 700},
-    { 731, 762, 790, 821, 851, 882, 912, 943, 974,1004,1035,1065},
-    {1096,1127,1155,1186,1216,1247,1277,1308,1339,1369,1400,1430},
-};
-
-/* APPROX breaks after 2100 or before epoch. Assumes correctness of results */
-#define APPROX(year, month, day, hour, minute, second) \
-(((((year-1970)/4*(365*4+1)+days[(year-1970)%4][month-1]+(day-1))*24+hour)*60+minute)*60+second)
-
-double quad_ease_io(double t) {
-    if(t < 0.5)	{
-        return 2 * t * t;
-    }
-    return (-2 * t * t) + (4 * t) - 1;
-}
-
-float lerp(double a, double b, double f) {
-    return (a * (1.0 - f)) + (b * f);
-}
-
 CBigNum CoinCCInterest(CBigNum P, double r, double t) {
     int64_t amount;
     double I;
 
     LogPrintf("COINage CoinCCInterest (P=%s r=%d t=%d)", P.ToString(), r, t);
 
-    I = P.getint() * (pow(E, r*t) - 1);
+    I = P.getuint64() * (pow(E, r*t) - 1);
     std::ostringstream ss;
     ss.imbue(std::locale::classic());
     ss << I;
@@ -1098,7 +1076,7 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
         Age = (t-txPrev.nTime);
         bnCentSecond += Coins * Age / CENT;
         Coins /= COIN;
-        nSubsidyFactually += CoinCCInterest(Coins, Rate, Age/(365.25 * 24 * 3600));
+        nSubsidyFactually += (CoinCCInterest(Coins, Rate, Age/(365.25 * 24 * 3600)) - Coins);
         LogPrintf("COINage coin*age Coins=%s nTimeDiff=%d bnCentSecond=%s Age=%d AgeOverYearSeconds=%d SubsidyFactually=%s Rate=%d\n", Coins.ToString(), t - txPrev.nTime, bnCentSecond.ToString(), Age, Age/(365.25 * 24 * 3600), nSubsidyFactually.ToString(), Rate);
     }
 

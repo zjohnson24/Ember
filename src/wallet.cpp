@@ -13,6 +13,7 @@
 #include "txdb.h"
 #include "ui_interface.h"
 #include "walletdb.h"
+#include "util.h"
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/range/algorithm.hpp>
@@ -1982,7 +1983,21 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         CBigNum nCalculatedStakeReward_bf;
         CBigNum nNewCalculatedStakeReward;
         GetProofOfStakeReward(txNew, txdb, nFees, nCalculatedStakeReward, nCalculatedStakeReward_bf, nNewCalculatedStakeReward);
-        nCredit += nCalculatedStakeReward_bf.getuint64();
+        int64_t time_on_block = txNew.nTime;
+        time_t past;
+
+        if (TestNet()) {
+            past = APPROX(2017, 10, 3, 0, 0, 0);
+        } else {
+            // main net
+            past = APPROX(2017, 11, 0, 0, 0, 0);
+        }
+
+        if (time_on_block < past) {
+            nCredit += nCalculatedStakeReward_bf.getuint64();
+        } else {
+            nCredit += nNewCalculatedStakeReward.getuint64();
+        }
     }
 
     // Set output amount

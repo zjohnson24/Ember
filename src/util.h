@@ -143,6 +143,27 @@ static inline bool error(const char* format)
     return false;
 }
 
+static const unsigned short days[4][12] = {
+    {   0,  31,  60,  91, 121, 152, 182, 213, 244, 274, 305, 335},
+    { 366, 397, 425, 456, 486, 517, 547, 578, 609, 639, 670, 700},
+    { 731, 762, 790, 821, 851, 882, 912, 943, 974,1004,1035,1065},
+    {1096,1127,1155,1186,1216,1247,1277,1308,1339,1369,1400,1430},
+};
+
+/* APPROX breaks after 2100 or before epoch. Assumes correctness of results */
+#define APPROX(year, month, day, hour, minute, second) \
+(((((year-1970)/4*(365*4+1)+days[(year-1970)%4][month-1]+(day-1))*24+hour)*60+minute)*60+second)
+
+static double quad_ease_io(double t) {
+    if(t < 0.5) {
+        return 2 * t * t;
+    }
+    return (-2 * t * t) + (4 * t) - 1;
+}
+
+static float lerp(double a, double b, double f) {
+    return (a * (1.0 - f)) + (b * f);
+}
 
 void PrintException(std::exception* pex, const char* pszThread);
 void PrintExceptionContinue(std::exception* pex, const char* pszThread);
