@@ -14,11 +14,6 @@ CONFIG += no_include_pwd
 CONFIG += thread
 windows:CONFIG += static
 
-windows:QMAKE_CXXFLAGS_RELEASE -= -O2
-windows:QMAKE_CXXFLAGS_RELEASE = -Os
-windows:QMAKE_CFLAGS_RELEASE -= -O2
-windows:QMAKE_CFLAGS_RELEASE = -Os
-
 greaterThan(QT_MAJOR_VERSION, 4) {
     QT += widgets
     DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
@@ -30,8 +25,16 @@ CONFIG(release, debug|release) {
         windows:QMAKE_POST_LINK += upx -k --best --overlay=strip --strip-relocs=0 --compress-icons=2 $(DESTDIR_TARGET)
         #windows:QMAKE_POST_LINK += signtool.exe sign /t http://timestamp.verisign.com/scripts/timstamp.dll /f "MyCert.pfx" /p MyPassword /d $(DESTDIR_TARGET) $(DESTDIR_TARGET)
     }
+    windows:QMAKE_CXXFLAGS_RELEASE -= -O2
+    windows:QMAKE_CXXFLAGS_RELEASE = -Os
+    windows:QMAKE_CFLAGS_RELEASE -= -O2
+    windows:QMAKE_CFLAGS_RELEASE = -Os
 } else {
     DESTDIR = debug
+    windows:QMAKE_CXXFLAGS_DEBUG -= -O2
+    windows:QMAKE_CXXFLAGS_DEBUG = -O0 -g -gdwarf-2 -fno-omit-frame-pointer
+    windows:QMAKE_CFLAGS_DEBUG -= -O2
+    windows:QMAKE_CFLAGS_DEBUG = -O0 -g -gdwarf-2 -fno-omit-frame-pointer
 }
 
 DESTDIR_TARGET = $${DESTDIR}$${TARGET}.exe
