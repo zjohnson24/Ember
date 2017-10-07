@@ -62,6 +62,11 @@ Mac OS X
 .. _`Qt Mac OS X SDK`: http://qt-project.org/downloads
 .. _`MacPorts`: http://www.macports.org/install.php
 
+- Deploy DMG:
+
+    cd release
+    python2.7 ../contrib/macdeploy/macdeployqtplus -no-strip -dmg Ember-Qt Ember-Qt.app
+
 
 Build configuration options
 ============================
@@ -103,8 +108,8 @@ FreeDesktop notification interface through DBUS using the following qmake option
 Generation of QR codes
 -----------------------
 
-libqrencode may be used to generate QRCode images for payment requests. 
-It can be downloaded from http://fukuchi.org/works/qrencode/index.html.en, or installed via your package manager. Pass the USE_QRCODE 
+libqrencode may be used to generate QRCode images for payment requests.
+It can be downloaded from http://fukuchi.org/works/qrencode/index.html.en, or installed via your package manager. Pass the USE_QRCODE
 flag to qmake to control this:
 
 +--------------+--------------------------------------------------------------------------+

@@ -14,20 +14,24 @@
 	<string>Ember-Qt</string>
 	<key>CFBundleIdentifier</key>
 	<string>co.Ember.Ember-Qt</string>
-        <key>CFBundleURLTypes</key>
-        <array>
-          <dict>
-            <key>CFBundleTypeRole</key>
-            <string>Editor</string>
-            <key>CFBundleURLName</key>
-            <string>co.Ember.EmberPayment</string>
-            <key>CFBundleURLSchemes</key>
-            <array>
-              <string>Ember</string>
-            </array>
-          </dict>
-        </array>
-        <key>LSAppNapIsDisabled</key>
-          <string>True</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>CFBundleURLName</key>
+      <string>co.Ember.EmberPayment</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>Ember</string>
+      </array>
+    </dict>
+  </array>
+  <key>LSAppNapIsDisabled</key>
+  <string>True</string>
+  <key>NSPrincipalClass</key>
+  <string>NSApplication</string>
+  <key>NSHighResolutionCapable</key>
+  <string>True</string>
 </dict>
 </plist>
