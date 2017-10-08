@@ -32,10 +32,21 @@ CONFIG(release, debug|release) {
 } else {
     DESTDIR = debug
     windows:QMAKE_CXXFLAGS_DEBUG -= -O2
-    windows:QMAKE_CXXFLAGS_DEBUG = -O0 -g -gdwarf-2 -fno-omit-frame-pointer
+    windows:QMAKE_CXXFLAGS_DEBUG = -O0 -fno-omit-frame-pointer -g -gdwarf
     windows:QMAKE_CFLAGS_DEBUG -= -O2
-    windows:QMAKE_CFLAGS_DEBUG = -O0 -g -gdwarf-2 -fno-omit-frame-pointer
+    windows:QMAKE_CFLAGS_DEBUG = -O0 -fno-omit-frame-pointer -g -gdwarf
 }
+
+!win32 {
+        # for extra security against potential buffer overflows: enable GCCs Stack Smashing Protection
+        QMAKE_CXXFLAGS *= -fstack-protector-all --param ssp-buffer-size=1
+        QMAKE_LFLAGS *= -fstack-protector-all --param ssp-buffer-size=1
+        # We need to exclude this for Windows cross compile with MinGW 4.2.x, as it will result in a non-working executable!
+        # This can be enabled for Windows, when we switch to MinGW >= 4.4.x.
+}
+# for extra security on Windows: enable ASLR and DEP via GCC linker flags
+windows:QMAKE_LFLAGS_RELEASE *= -Wl,--dynamicbase -Wl,--nxcompat
+windows:QMAKE_LFLAGS_RELEASE += -static-libgcc -static-libstdc++
 
 DESTDIR_TARGET = $${DESTDIR}$${TARGET}.exe
 
@@ -153,18 +164,6 @@ contains(BITCOIN_NEED_QT_PLUGINS, 1) {
     DEFINES += BITCOIN_NEED_QT_PLUGINS
     QTPLUGIN += qcncodecs qjpcodecs qtwcodecs qkrcodecs qtaccessiblewidgets
 }
-
-!win32 {
-	# for extra security against potential buffer overflows: enable GCCs Stack Smashing Protection
-	QMAKE_CXXFLAGS *= -fstack-protector-all --param ssp-buffer-size=1
-	QMAKE_LFLAGS *= -fstack-protector-all --param ssp-buffer-size=1
-	# We need to exclude this for Windows cross compile with MinGW 4.2.x, as it will result in a non-working executable!
-	# This can be enabled for Windows, when we switch to MinGW >= 4.4.x.
-}
-# for extra security on Windows: enable ASLR and DEP via GCC linker flags
-win32:QMAKE_LFLAGS *= -Wl,--dynamicbase -Wl,--nxcompat
-win32:QMAKE_LFLAGS += -static-libgcc -static-libstdc++
-
 
 INCLUDEPATH += src/leveldb/include src/leveldb/helpers
 LIBS += $$PWD/src/leveldb/libleveldb.a $$PWD/src/leveldb/libmemenv.a
