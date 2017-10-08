@@ -1167,18 +1167,16 @@ void ThreadOpenConnections()
     // Connect to specific addresses
     if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0) {
         for (int64_t nLoop = 0; !ShutdownRequested(); nLoop++) {
-            boost::this_thread::interruption_point();
             ProcessOneShot();
-            BOOST_FOREACH(string strAddr, mapMultiArgs["-connect"])
-            {
+            BOOST_FOREACH(string strAddr, mapMultiArgs["-connect"]) {
+                boost::this_thread::interruption_point();
+                if (ShutdownRequested()) {
+                    goto thread_end;
+                }
                 CAddress addr;
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
-                for (int i = 0; i < 10 && i < nLoop; i++)
-                {
-                    MilliSleep(500);
-                }
             }
-            MilliSleep(500);
+            MilliSleep(300);
         }
     }
 
@@ -1188,7 +1186,7 @@ void ThreadOpenConnections()
         boost::this_thread::interruption_point();
         ProcessOneShot();
 
-        MilliSleep(500);
+        MilliSleep(300);
 
         CSemaphoreGrant grant(*semOutbound);
 
@@ -1214,6 +1212,10 @@ void ThreadOpenConnections()
         {
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes) {
+                boost::this_thread::interruption_point();
+                if (ShutdownRequested()) {
+                    break;
+                }
                 if (!pnode->fInbound) {
                     setConnected.insert(pnode->addr.GetGroup());
                     nOutbound++;
@@ -1225,6 +1227,8 @@ void ThreadOpenConnections()
 
         int nTries = 0;
         while (!ShutdownRequested()) {
+            boost::this_thread::interruption_point();
+
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
@@ -1256,10 +1260,10 @@ void ThreadOpenConnections()
         if (addrConnect.IsValid())
             OpenNetworkConnection(addrConnect, &grant);
     }
+thread_end:
 }
 
-void ThreadOpenAddedConnections()
-{
+void ThreadOpenAddedConnections() {
     {
         LOCK(cs_vAddedNodes);
         vAddedNodes = mapMultiArgs["-addnode"];
@@ -1275,14 +1279,18 @@ void ThreadOpenAddedConnections()
                     lAddresses.push_back(strAddNode);
             }
             BOOST_FOREACH(string& strAddNode, lAddresses) {
+                boost::this_thread::interruption_point();
+                if (ShutdownRequested()) {
+                    break;
+                }
                 CAddress addr;
                 CSemaphoreGrant grant(*semOutbound);
                 OpenNetworkConnection(addr, &grant, strAddNode.c_str());
                 MilliSleep(500);
             }
-            // Retry every 2 minutes
-            for (int i=0; i<(60*2) && !ShutdownRequested(); i++) {
-                MilliSleep(1000);
+            // Retry every 30 seconds
+            for (int i=0; i<(60) && !ShutdownRequested(); i++) {
+                MilliSleep(500);
             }
         }
     }
@@ -1294,21 +1302,25 @@ void ThreadOpenAddedConnections()
         list<string> lAddresses(0);
         {
             LOCK(cs_vAddedNodes);
-            BOOST_FOREACH(string& strAddNode, vAddedNodes)
+            BOOST_FOREACH(string& strAddNode, vAddedNodes) {
                 lAddresses.push_back(strAddNode);
+            }
         }
 
         list<vector<CService> > lservAddressesToAdd(0);
-        BOOST_FOREACH(string& strAddNode, lAddresses)
-        {
+        BOOST_FOREACH(string& strAddNode, lAddresses) {
             vector<CService> vservNode(0);
-            if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(), fNameLookup, 0))
-            {
+            if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(), fNameLookup, 0)) {
                 lservAddressesToAdd.push_back(vservNode);
                 {
                     LOCK(cs_setservAddNodeAddresses);
-                    BOOST_FOREACH(CService& serv, vservNode)
+                    BOOST_FOREACH(CService& serv, vservNode) {
+                        boost::this_thread::interruption_point();
+                        if (ShutdownRequested()) {
+                            break;
+                        }
                         setservAddNodeAddresses.insert(serv);
+                    }
                 }
             }
         }
@@ -1316,28 +1328,40 @@ void ThreadOpenAddedConnections()
         // (keeping in mind that addnode entries can have many IPs if fNameLookup)
         {
             LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode* pnode, vNodes)
-                for (list<vector<CService> >::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++)
-                    BOOST_FOREACH(CService& addrNode, *(it))
-                        if (pnode->addr == addrNode)
-                        {
+            BOOST_FOREACH(CNode* pnode, vNodes) {
+                if (ShutdownRequested()) {
+                    break;
+                }
+                for (list<vector<CService> >::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++) {
+                    BOOST_FOREACH(CService& addrNode, *(it)) {
+                        boost::this_thread::interruption_point();
+                        if (ShutdownRequested()) {
+                            break;
+                        }
+                        if (pnode->addr == addrNode) {
                             it = lservAddressesToAdd.erase(it);
                             it--;
                             break;
                         }
+                    }
+                }
+            }
         }
         BOOST_FOREACH(vector<CService>& vserv, lservAddressesToAdd)
         {
             boost::this_thread::interruption_point();
-            MilliSleep(500);
+            if (ShutdownRequested()) {
+                break;
+            }
             CSemaphoreGrant grant(*semOutbound);
             OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
 
         }
-        // Retry every 2 minutes
-        for (int i=0; i<(60*2) && !ShutdownRequested(); i++) {
-            MilliSleep(1000);
+        // Retry every 30 seconds
+        for (int i=0; i<(60) && !ShutdownRequested(); i++) {
+            MilliSleep(500);
         }
+
 
     }
 }
