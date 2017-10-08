@@ -1171,7 +1171,7 @@ void ThreadOpenConnections()
             BOOST_FOREACH(string strAddr, mapMultiArgs["-connect"]) {
                 boost::this_thread::interruption_point();
                 if (ShutdownRequested()) {
-                    goto thread_end;
+                    break;
                 }
                 CAddress addr;
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
@@ -1260,7 +1260,6 @@ void ThreadOpenConnections()
         if (addrConnect.IsValid())
             OpenNetworkConnection(addrConnect, &grant);
     }
-thread_end:
 }
 
 void ThreadOpenAddedConnections() {
