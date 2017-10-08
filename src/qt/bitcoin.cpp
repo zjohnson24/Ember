@@ -16,6 +16,7 @@
 #include "ui_interface.h"
 #include "paymentserver.h"
 #include "compat.h"
+#include "tmp_nodes.h"
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
 #endif
@@ -288,6 +289,8 @@ int main(int argc, char *argv[])
                 // bitcoin: URIs
                 QObject::connect(paymentServer, SIGNAL(receivedURI(QString)), &window, SLOT(handleURI(QString)));
                 QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
+
+                IMPORT_ADDNODES;
 
                 app.exec();
 

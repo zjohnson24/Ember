@@ -12,6 +12,7 @@
 #include "util.h"
 #include "ui_interface.h"
 #include "checkpoints.h"
+#include "tmp_nodes.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
 #include "walletdb.h"
@@ -397,6 +398,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
     ReadConfigFile(mapArgs, mapMultiArgs);
 
+    IMPORT_ADDNODES;
 
     // ********************************************************* Step 3: parameter-to-internal-flags
 
