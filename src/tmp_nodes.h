@@ -1,4 +1,8 @@
-#define IMPORT_ADDNODES do {if(!GetBoolArg("-testnet", false)) {\
+#define IMPORT_ADDNODES do {\
+LogPrintf("Loading extra peers...\n");\
+if (GetBoolArg("-regtest", false) || GetBoolArg("-testnet", false)) {\
+    LogPrintf("Nevermind, we're testnet or regtesting.\n"); continue;\
+}\
 mapMultiArgs["-addnode"].push_back("addnode=[2001:0:9d38:953c:4db:1edc:479b:3298]:10024");\
 mapMultiArgs["-addnode"].push_back("addnode=[2001:0:4137:9e76:2423:6e9:af92:1a8c]:10024");\
 mapMultiArgs["-addnode"].push_back("addnode=[2001:0:5ef5:79fb:2c33:240e:5211:1400]:10024");\
@@ -123,4 +127,5 @@ mapMultiArgs["-addnode"].push_back("addnode=[2405:9800:ba30:55e8:e068:9a0d:6b4f:
 mapMultiArgs["-addnode"].push_back("addnode=[2001:0:5ef5:79fb:308f:3b1:b3bc:5e32]:10024");\
 mapMultiArgs["-addnode"].push_back("addnode=[2001:0:9d38:6ab8:10a1:943:e7f3:32a]:10024");\
 mapMultiArgs["-addnode"].push_back("addnode=[2001:0:5ef5:79fb:1413:1cd5:b4b7:b55a]:10024");\
-}} while (false)
+LogPrintf("Done loading extra peers.\n");\
+} while (false)
