@@ -112,9 +112,6 @@ OverviewPage::OverviewPage(QWidget *parent) :
 
     connect(ui->listTransactions, SIGNAL(clicked(QModelIndex)), this, SLOT(handleTransactionClicked(QModelIndex)));
 
-    ui->updated->hide();
-    ui->updateButton->hide();
-
     // init "out of sync" warning labels
     ui->labelWalletStatus->setText("(" + tr("out of sync") + ")");
     ui->labelTransactionsStatus->setText("(" + tr("out of sync") + ")");
@@ -123,13 +120,6 @@ OverviewPage::OverviewPage(QWidget *parent) :
     showOutOfSyncWarning(true);
 
 }
-
-void OverviewPage::ShowUpdateText() { ui->updated->show(); }
-void OverviewPage::ShowUpdateButton() { ui->updateButton->show(); }
-void OverviewPage::HideUpdateText() { ui->updated->hide(); }
-void OverviewPage::HideUpdateButton() { ui->updateButton->hide(); }
-
-QPushButton* OverviewPage::GetUpdateButton() {return ui->updateButton; }
 
 void OverviewPage::handleTransactionClicked(const QModelIndex &index)
 {
