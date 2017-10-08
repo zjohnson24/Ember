@@ -99,16 +99,16 @@ isEmpty(OPENSSL_LIB_PATH) {
 }
 
 isEmpty(BDB_LIB_PATH) {
-    macx:BDB_LIB_PATH = /usr/local/Cellar/berkeley-db@4/4.8.30/lib
+    macx:BDB_LIB_PATH = /usr/local/Cellar/berkeley-db/6.2.32/lib
     windows:BDB_LIB_PATH=$$PWD/libs
 }
 
 isEmpty(BDB_LIB_SUFFIX) {
-    macx:BDB_LIB_SUFFIX = -4.8
+    macx:BDB_LIB_SUFFIX = -6.2
 }
 
 isEmpty(BDB_INCLUDE_PATH) {
-    macx:BDB_INCLUDE_PATH = /usr/local/Cellar/berkeley-db@4/4.8.30/include
+    macx:BDB_INCLUDE_PATH = /usr/local/Cellar/berkeley-db/6.2.32/include
     windows:BDB_INCLUDE_PATH=$$PWD/inc/db-6.1.26
 }
 
