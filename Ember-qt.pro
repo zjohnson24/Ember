@@ -501,6 +501,17 @@ contains(RELEASE, 1) {
 linux {
     DEFINES += LINUX
     LIBS += -lrt -ldl
+
+    binfile.files += release/Ember-qt
+    binfile.path = /usr/bin
+    icon.files += src/qt/res/icons/Ember_64x64.png
+    icon.path = /usr/share/ember-qt/
+    shortcut.files += share/linux/ember-qt.desktop
+    shortcut.path += /usr/share/applications/
+
+    INSTALLS += binfile
+    INSTALLS += icon
+    INSTALLS += shortcut
 }
 
 system($$QMAKE_LRELEASE -silent $$_PRO_FILE_)
