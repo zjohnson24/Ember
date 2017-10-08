@@ -206,15 +206,12 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     return params;
 }
 
-int CommandLineRPC(int argc, char *argv[])
-{
+int CommandLineRPC(int argc, char *argv[]) {
     string strPrint;
     int nRet = 0;
-    try
-    {
+    try {
         // Skip switches
-        while (argc > 1 && IsSwitchChar(argv[1][0]))
-        {
+        while (argc > 1 && IsSwitchChar(argv[1][0])) {
             argc--;
             argv++;
         }
@@ -235,15 +232,12 @@ int CommandLineRPC(int argc, char *argv[])
         const Value& result = find_value(reply, "result");
         const Value& error  = find_value(reply, "error");
 
-        if (error.type() != null_type)
-        {
+        if (error.type() != null_type) {
             // Error
             strPrint = "error: " + write_string(error, false);
             int code = find_value(error.get_obj(), "code").get_int();
             nRet = abs(code);
-        }
-        else
-        {
+        } else {
             // Result
             if (result.type() == null_type)
                 strPrint = "";
@@ -254,6 +248,7 @@ int CommandLineRPC(int argc, char *argv[])
         }
     }
     catch (boost::thread_interrupted) {
+        LogPrintf("CommandLineRPC() interrupt\n");
         throw;
     }
     catch (std::exception& e) {
@@ -264,8 +259,7 @@ int CommandLineRPC(int argc, char *argv[])
         PrintException(NULL, "CommandLineRPC()");
     }
 
-    if (strPrint != "")
-    {
+    if (strPrint != "") {
         fprintf((nRet == 0 ? stdout : stderr), "%s\n", strPrint.c_str());
     }
     return nRet;

@@ -3648,6 +3648,7 @@ bool ProcessMessages(CNode* pfrom)
             }
         }
         catch (boost::thread_interrupted) {
+            LogPrintf("ProcessMessages() interrupt\n");
             throw;
         }
         catch (std::exception& e) {
