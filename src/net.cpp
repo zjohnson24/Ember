@@ -128,56 +128,6 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer)
     return ret;
 }
 
-bool RecvLine(SOCKET hSocket, string& strLine)
-{
-    strLine = "";
-    while (true)
-    {
-        char c;
-        int nBytes = recv(hSocket, &c, 1, 0);
-        if (nBytes > 0)
-        {
-            if (c == '\n')
-                continue;
-            if (c == '\r')
-                return true;
-            strLine += c;
-            if (strLine.size() >= 9000)
-                return true;
-        }
-        else if (nBytes <= 0)
-        {
-            boost::this_thread::interruption_point();
-            if (nBytes < 0)
-            {
-                int nErr = WSAGetLastError();
-                if (nErr == WSAEMSGSIZE)
-                    continue;
-                if (nErr == WSAEWOULDBLOCK || nErr == WSAEINTR || nErr == WSAEINPROGRESS)
-                {
-                    MilliSleep(10);
-                    continue;
-                }
-            }
-            if (!strLine.empty())
-                return true;
-            if (nBytes == 0)
-            {
-                // socket closed
-                LogPrint("net", "socket closed\n");
-                return false;
-            }
-            else
-            {
-                // socket error
-                int nErr = WSAGetLastError();
-                LogPrint("net", "recv failed: %d\n", nErr);
-                return false;
-            }
-        }
-    }
-}
-
 int GetnScore(const CService& addr)
 {
     LOCK(cs_mapLocalHost);
@@ -529,36 +479,54 @@ void CNode::copyStats(CNodeStats &stats)
 }
 #undef X
 
-// requires LOCK(cs_vRecvMsg)
-bool CNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes)
-{
-    while (nBytes > 0) {
 
-        // get current incomplete message, or create a new one
-        if (vRecvMsg.empty() ||
-            vRecvMsg.back().complete())
+void CNode::RecvMsg(char *buf, int32_t buf_len) {
+    int32_t buf_len_ = (buf_len = recv(hSocket, buf, buf_len, MSG_DONTWAIT));
+    if (buf_len < 0) {
+        int nErr = WSAGetLastError();
+        // socket error
+        if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS) {
+            if (!fDisconnect) {
+                LogPrint("net", "Socket recv failed with: (%d)\n", nErr);
+            }
+            CloseSocketDisconnect();
+        }
+        return;
+    } else if (buf_len == 0) {
+        // socket closed
+        if (!fDisconnect) {
+            LogPrint("net", "Socket closed properly\n");
+        }
+        CloseSocketDisconnect();
+        return;
+    }
+    while (buf_len > 0) { // absorb network data
+        if (vRecvMsg.empty() || vRecvMsg.back().complete()) {
             vRecvMsg.push_back(CNetMessage(SER_NETWORK, nRecvVersion));
-
+        }
         CNetMessage& msg = vRecvMsg.back();
 
-        // absorb network data
         int handled;
-        if (!msg.in_data)
-            handled = msg.readHeader(pch, nBytes);
-        else
-            handled = msg.readData(pch, nBytes);
-
-        if (handled < 0)
-                return false;
-
-        pch += handled;
-        nBytes -= handled;
-
-        if (msg.complete())
+        if (!msg.in_data) {
+            handled = msg.readHeader(buf, buf_len);
+        } else {
+            handled = msg.readData(buf, buf_len);
+        }
+        if (handled < 0) {
+            LogPrint("net", "Socket handled incorrectly on continuation\n");
+            CloseSocketDisconnect();
+            return;
+        }
+        buf += handled;
+        buf_len -= handled;
+        if (msg.complete()) {
             msg.nTime = GetTimeMicros();
+        }
     }
-
-    return true;
+    nLastRecv = GetTime();
+    nRecvBytes += buf_len_;
+    RecordBytesRecv(buf_len_);
+    return;
 }
 
 int CNetMessage::readHeader(const char *pch, unsigned int nBytes)
@@ -666,7 +634,7 @@ void ThreadSocketHandler()
 {
     unsigned int nPrevNodeCount = 0;
 
-    while (true)
+    while (!ShutdownRequested())
     {
         //
         // Disconnect nodes
@@ -823,7 +791,7 @@ void ThreadSocketHandler()
                 if (nErr != WSAEWOULDBLOCK)
                     LogPrintf("socket error accept failed: %d\n", nErr);
             }
-            else if (nInbound >= min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 64)))
+            else if (nInbound >= min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 16)))
             {
                 closesocket(hSocket);
             }
@@ -877,33 +845,7 @@ void ThreadSocketHandler()
                     else {
                         // typical socket buffer is 8K-64K
                         char pchBuf[0x10000];
-                        int nBytes = recv(pnode->hSocket, pchBuf, sizeof(pchBuf), MSG_DONTWAIT);
-                        if (nBytes > 0)
-                        {
-                            if (!pnode->ReceiveMsgBytes(pchBuf, nBytes))
-                                pnode->CloseSocketDisconnect();
-                            pnode->nLastRecv = GetTime();
-                            pnode->nRecvBytes += nBytes;
-                            pnode->RecordBytesRecv(nBytes);
-                        }
-                        else if (nBytes == 0)
-                        {
-                            // socket closed gracefully
-                            if (!pnode->fDisconnect)
-                                LogPrint("net", "socket closed\n");
-                            pnode->CloseSocketDisconnect();
-                        }
-                        else if (nBytes < 0)
-                        {
-                            // error
-                            int nErr = WSAGetLastError();
-                            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
-                            {
-                                if (!pnode->fDisconnect)
-                                    LogPrintf("socket recv error %d\n", nErr);
-                                pnode->CloseSocketDisconnect();
-                            }
-                        }
+                        pnode->RecvMsg(pchBuf, sizeof(pchBuf));
                     }
                 }
             }
@@ -1170,13 +1112,16 @@ void ThreadOpenConnections()
             ProcessOneShot();
             BOOST_FOREACH(string strAddr, mapMultiArgs["-connect"]) {
                 boost::this_thread::interruption_point();
-                if (ShutdownRequested()) {
-                    break;
-                }
                 CAddress addr;
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
+                for (int i = 0; i < 10 && i < nLoop; i++) {
+                    MilliSleep(500);
+                    if (ShutdownRequested()) {
+                        return;
+                    }
+                }
             }
-            MilliSleep(300);
+            MilliSleep(500);
         }
     }
 
@@ -1186,7 +1131,7 @@ void ThreadOpenConnections()
         boost::this_thread::interruption_point();
         ProcessOneShot();
 
-        MilliSleep(300);
+        MilliSleep(500);
 
         CSemaphoreGrant grant(*semOutbound);
 
@@ -1287,10 +1232,8 @@ void ThreadOpenAddedConnections() {
                 OpenNetworkConnection(addr, &grant, strAddNode.c_str());
                 MilliSleep(500);
             }
-            // Retry every 30 seconds
-            for (int i=0; i<(60) && !ShutdownRequested(); i++) {
-                MilliSleep(500);
-            }
+            // Retry every 2 minutes
+            MilliSleep(2*60*1000);
         }
     }
 
@@ -1354,14 +1297,10 @@ void ThreadOpenAddedConnections() {
             }
             CSemaphoreGrant grant(*semOutbound);
             OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
-
-        }
-        // Retry every 30 seconds
-        for (int i=0; i<(60) && !ShutdownRequested(); i++) {
             MilliSleep(500);
         }
-
-
+        // Retry every 2 minutes
+        MilliSleep(2*60*1000);
     }
 }
 
@@ -1498,7 +1437,7 @@ void ThreadMessageHandler()
         }
 
         if (fSleep)
-            MilliSleep(200);
+            MilliSleep(100);
     }
 }
 
@@ -1667,7 +1606,7 @@ void StartNode(boost::thread_group& threadGroup)
 {
     if (semOutbound == NULL) {
         // initialize semaphore
-        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 64));
+        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 16));
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
