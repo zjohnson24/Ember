@@ -1021,10 +1021,10 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
         far_far_future = APPROX(2017, 10, 4, 20, 0, 0);
     } else {
         // main net
-        past = APPROX(2017, 11, 0, 0, 0, 0);
-        future = APPROX(2017, 11, 3, 0, 0, 0);
-        far_future = APPROX(2018, 11, 0, 0, 0, 0);
-        far_far_future = APPROX(2019, 11, 0, 0, 0, 0);
+        past = APPROX(2017, 11, 1, 0, 0, 0);
+        future = APPROX(2017, 11, 4, 0, 0, 0);
+        far_future = APPROX(2018, 11, 1, 0, 0, 0);
+        far_far_future = APPROX(2019, 11, 1, 0, 0, 0);
     }
     CBigNum nSubsidyFactually(0);
 
