@@ -1,18 +1,25 @@
 TEMPLATE = app
-TARGET = Ember-qt
+TARGET = Ember-Qt
 VERSION = 1.1.4.0
 INCLUDEPATH += src src/json src/qt
 QT += network
 DEFINES += ENABLE_WALLET
 DEFINES += BOOST_THREAD_USE_LIB
 DEFINES += BOOST_SPIRIT_THREADSAFE
-windows:DEFINES += BOOST_NO_CXX11_SCOPED_ENUMS
-windows:DEFINES += BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN
+win32:DEFINES += BOOST_NO_CXX11_SCOPED_ENUMS
+win32:DEFINES += BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN
 DEFINES += QT_GUI
 DEFINES += __NO_SYSTEM_INCLUDES
 CONFIG += no_include_pwd
 CONFIG += thread
-windows:CONFIG += static
+win32:CONFIG += static
+
+DESTDIR_TARGET = $${DESTDIR}$${TARGET}.exe
+
+OBJECTS_DIR = build
+MOC_DIR = build
+RCC_DIR = build
+UI_DIR = build
 
 greaterThan(QT_MAJOR_VERSION, 4) {
     QT += widgets
@@ -22,19 +29,20 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 CONFIG(release, debug|release) {
     DESTDIR = release
     contains(RELEASE, 1) {
-        windows:QMAKE_POST_LINK += upx -k --best --overlay=strip --strip-relocs=0 --compress-icons=2 $(DESTDIR_TARGET)
-        #windows:QMAKE_POST_LINK += signtool.exe sign /t http://timestamp.verisign.com/scripts/timstamp.dll /f "MyCert.pfx" /p MyPassword /d $(DESTDIR_TARGET) $(DESTDIR_TARGET)
+        #win32:QMAKE_POST_LINK += upx -k --best --overlay=strip --strip-relocs=0 --compress-icons=2 $(DESTDIR_TARGET)
+        #win32:QMAKE_POST_LINK += && C:/PROGRA~2/WI3CF2~1/8.1/bin/x64/mt.exe -manifest src/qt/res/$(TARGET).manifest -outputresource:$(DESTDIR_TARGET);$${LITERAL_HASH}1
+        #win32:QMAKE_POST_LINK += signtool.exe sign /t http://timestamp.verisign.com/scripts/timstamp.dll /f "MyCert.pfx" /p MyPassword /d $(DESTDIR_TARGET) $(DESTDIR_TARGET)
     }
-    windows:QMAKE_CXXFLAGS_RELEASE -= -O2
-    windows:QMAKE_CXXFLAGS_RELEASE = -Os
-    windows:QMAKE_CFLAGS_RELEASE -= -O2
-    windows:QMAKE_CFLAGS_RELEASE = -Os
+    win32:QMAKE_CXXFLAGS_RELEASE -= -O2
+    win32:QMAKE_CXXFLAGS_RELEASE = -Os
+    win32:QMAKE_CFLAGS_RELEASE -= -O2
+    win32:QMAKE_CFLAGS_RELEASE = -Os
 } else {
     DESTDIR = debug
-    windows:QMAKE_CXXFLAGS_DEBUG -= -O2
-    windows:QMAKE_CXXFLAGS_DEBUG = -O0 -fno-omit-frame-pointer -g -gdwarf
-    windows:QMAKE_CFLAGS_DEBUG -= -O2
-    windows:QMAKE_CFLAGS_DEBUG = -O0 -fno-omit-frame-pointer -g -gdwarf
+    win32:QMAKE_CXXFLAGS_DEBUG -= -O2
+    win32:QMAKE_CXXFLAGS_DEBUG = -O0 -fno-omit-frame-pointer -g -gdwarf-2 -ggdb
+    win32:QMAKE_CFLAGS_DEBUG -= -O2
+    win32:QMAKE_CFLAGS_DEBUG = -O0 -fno-omit-frame-pointer -g -gdwarf-2 -ggdb
 }
 
 !win32 {
@@ -45,15 +53,8 @@ CONFIG(release, debug|release) {
         # This can be enabled for Windows, when we switch to MinGW >= 4.4.x.
 }
 # for extra security on Windows: enable ASLR and DEP via GCC linker flags
-windows:QMAKE_LFLAGS_RELEASE *= -Wl,--dynamicbase -Wl,--nxcompat
-windows:QMAKE_LFLAGS_RELEASE += -static-libgcc -static-libstdc++
-
-DESTDIR_TARGET = $${DESTDIR}$${TARGET}.exe
-
-OBJECTS_DIR = build
-MOC_DIR = build
-RCC_DIR = build
-UI_DIR = build
+win32:QMAKE_LFLAGS_RELEASE *= -Wl,--dynamicbase -Wl,--nxcompat
+win32:QMAKE_LFLAGS_RELEASE += -static-libgcc -static-libstdc++
 
 # use: qmake "RELEASE=1"
 contains(RELEASE, 1) {
@@ -67,20 +68,39 @@ contains(RELEASE, 1) {
     }
 }
 
+contains(USE_O3, 1) {
+    message(Building O3 optimization flag)
+    QMAKE_CXXFLAGS_RELEASE -= -O2
+    QMAKE_CFLAGS_RELEASE -= -O2
+    win32:QMAKE_CXXFLAGS_RELEASE -= -Os
+    win32:QMAKE_CFLAGS_RELEASE -= -Os
+    QMAKE_CXXFLAGS += -O3
+    QMAKE_CFLAGS += -O3
+}
+
+*-g++-32 {
+    message("32 platform, adding -msse2 flag")
+
+    QMAKE_CXXFLAGS += -msse2
+    QMAKE_CFLAGS += -msse2
+}
+
+QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wno-ignored-qualifiers -Wformat -Wformat-security -Wno-unused-parameter -Wstack-protector
+
 isEmpty(MINIUPNPC_INCLUDE_PATH) {
     macx:MINIUPNPC_INCLUDE_PATH = /usr/local/Cellar/miniupnpc/2.0.20170509/include
-    windows:MINIUPNPC_INCLUDE_PATH=$$PWD/deps
+    win32:MINIUPNPC_INCLUDE_PATH=$$PWD/deps
 }
 
 isEmpty(MINIUPNPC_LIB_PATH) {
     macx:MINIUPNPC_LIB_PATH = /usr/local/Cellar/miniupnpc/2.0.20170509/lib
-    windows:MINIUPNPC_LIB_PATH=$$PWD/deps/miniupnpc
+    win32:MINIUPNPC_LIB_PATH=$$PWD/deps/miniupnpc
 }
 
 # platform specific defaults, if not overridden on command line
 isEmpty(BOOST_LIB_SUFFIX) {
     macx:BOOST_LIB_SUFFIX = -mt
-    windows:BOOST_LIB_SUFFIX = -mgw53-1_55
+    win32:BOOST_LIB_SUFFIX = -mgw53-1_55
 }
 
 isEmpty(BOOST_THREAD_LIB_SUFFIX) {
@@ -88,19 +108,24 @@ isEmpty(BOOST_THREAD_LIB_SUFFIX) {
     else:BOOST_THREAD_LIB_SUFFIX = $$BOOST_LIB_SUFFIX
 }
 
+isEmpty(BOOST_THREAD_STATIC_LIB_SUFFIX) {
+    win32:BOOST_THREAD_STATIC_LIB_SUFFIX = -mgw53-mt-s-1_55
+    else:BOOST_THREAD_STATIC_LIB_SUFFIX = $$BOOST_LIB_SUFFIX
+}
+
 isEmpty(OPENSSL_INCLUDE_PATH) {
     macx:OPENSSL_INCLUDE_PATH = /usr/local/Cellar/openssl/1.0.2l/include
-    windows:OPENSSL_INCLUDE_PATH=$$PWD/deps/openssl-1.0.2l/include
+    win32:OPENSSL_INCLUDE_PATH=$$PWD/deps/openssl-1.0.2l/include
 }
 
 isEmpty(OPENSSL_LIB_PATH) {
     macx:OPENSSL_LIB_PATH = /usr/local/Cellar/openssl/1.0.2l/lib
-    windows:OPENSSL_LIB_PATH=$$PWD/libs
+    win32:OPENSSL_LIB_PATH=$$PWD/deps/openssl-1.0.2l
 }
 
 isEmpty(BDB_LIB_PATH) {
     macx:BDB_LIB_PATH = /usr/local/Cellar/berkeley-db/6.2.32/lib
-    windows:BDB_LIB_PATH=$$PWD/libs
+    win32:BDB_LIB_PATH=$$PWD/deps/db-6.1.26/build_unix
 }
 
 isEmpty(BDB_LIB_SUFFIX) {
@@ -109,17 +134,17 @@ isEmpty(BDB_LIB_SUFFIX) {
 
 isEmpty(BDB_INCLUDE_PATH) {
     macx:BDB_INCLUDE_PATH = /usr/local/Cellar/berkeley-db/6.2.32/include
-    windows:BDB_INCLUDE_PATH=$$PWD/inc/db-6.1.26
+    win32:BDB_INCLUDE_PATH=$$PWD/deps/db-6.1.26/build_unix
 }
 
 isEmpty(BOOST_LIB_PATH) {
     macx:BOOST_LIB_PATH = /usr/local/Cellar/boost/1.65.1/lib
-    windows:BOOST_LIB_PATH=$$PWD/libs
+    win32:BOOST_LIB_PATH=$$PWD/deps/boost_1_55_0/stage/lib
 }
 
 isEmpty(BOOST_INCLUDE_PATH) {
     macx:BOOST_INCLUDE_PATH = /usr/local/Cellar/boost/1.65.1/include
-    windows:BOOST_INCLUDE_PATH=$$PWD/inc/boost_1_55_0
+    win32:BOOST_INCLUDE_PATH=$$PWD/deps/boost_1_55_0
 }
 
 # use: qmake "USE_QRCODE=1"
@@ -192,14 +217,15 @@ SOURCES += src/txdb-leveldb.cpp \
         QMAKE_RANLIB = $$replace(QMAKE_STRIP, strip, ranlib)
     }
     LIBS += -lshlwapi
-    genleveldb.commands = cd $$PWD/src/leveldb && $(MAKE) CC=$$QMAKE_CC CXX=$$QMAKE_CXX TARGET_OS=OS_WINDOWS_CROSSCOMPILE OPT=\"$$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_RELEASE\" libleveldb.a libmemenv.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libleveldb.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libmemenv.a
+    # Disable if building on Windows
+    #genleveldb.commands = cd $$PWD/src/leveldb && $(MAKE) CC=$$QMAKE_CC CXX=$$QMAKE_CXX TARGET_OS=OS_WINDOWS_CROSSCOMPILE OPT=\"$$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_RELEASE\" libleveldb.a libmemenv.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libleveldb.a && $$QMAKE_RANLIB $$PWD/src/leveldb/libmemenv.a
 }
 genleveldb.target = $$PWD/src/leveldb/libleveldb.a
 genleveldb.depends = FORCE
 PRE_TARGETDEPS += $$PWD/src/leveldb/libleveldb.a
 QMAKE_EXTRA_TARGETS += genleveldb
 # Gross ugly hack that depends on qmake internals, unfortunately there is no other way to do it.
-!windows:QMAKE_CLEAN += $$PWD/src/leveldb/libleveldb.a; cd $$PWD/src/leveldb && $(MAKE) clean
+!win32:QMAKE_CLEAN += $$PWD/src/leveldb/libleveldb.a; cd $$PWD/src/leveldb && $(MAKE) clean
 
 # regenerate src/build.h
 !windows|contains(USE_BUILD_INFO, 1) {
@@ -210,25 +236,6 @@ QMAKE_EXTRA_TARGETS += genleveldb
     QMAKE_EXTRA_TARGETS += genbuild
     DEFINES += HAVE_BUILD_INFO
 }
-
-contains(USE_O3, 1) {
-    message(Building O3 optimization flag)
-    QMAKE_CXXFLAGS_RELEASE -= -O2
-    QMAKE_CFLAGS_RELEASE -= -O2
-    windows:QMAKE_CXXFLAGS_RELEASE -= -Os
-    windows:QMAKE_CFLAGS_RELEASE -= -Os
-    QMAKE_CXXFLAGS += -O3
-    QMAKE_CFLAGS += -O3
-}
-
-*-g++-32 {
-    message("32 platform, adding -msse2 flag")
-
-    QMAKE_CXXFLAGS += -msse2
-    QMAKE_CFLAGS += -msse2
-}
-
-QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wno-ignored-qualifiers -Wformat -Wformat-security -Wno-unused-parameter -Wstack-protector
 
 # Input
 DEPENDPATH += src src/json src/qt
@@ -416,9 +423,9 @@ FORMS += \
     src/qt/forms/optionsdialog.ui
 
 contains(USE_QRCODE, 1) {
-	HEADERS += src/qt/qrcodedialog.h
-	SOURCES += src/qt/qrcodedialog.cpp
-	FORMS += src/qt/forms/qrcodedialog.ui
+        HEADERS += src/qt/qrcodedialog.h
+        SOURCES += src/qt/qrcodedialog.cpp
+        FORMS += src/qt/forms/qrcodedialog.ui
 }
 
 CODECFORTR = UTF-8
@@ -437,18 +444,19 @@ TSQM.name = lrelease ${QMAKE_FILE_IN}
 TSQM.input = TRANSLATIONS
 TSQM.output = $$QM_DIR/${QMAKE_FILE_BASE}.qm
 TSQM.commands = $$QMAKE_LRELEASE ${QMAKE_FILE_IN} -qm ${QMAKE_FILE_OUT}
-windows:TSQM.CONFIG = no_link target_predeps
+win32:TSQM.CONFIG = no_link target_predeps
 else:TSQM.CONFIG = no_link
 QMAKE_EXTRA_COMPILERS += TSQM
 
 # "Other files" to show in Qt Creator
 OTHER_FILES += \
-    doc/*.rst doc/*.txt doc/README README.md res/bitcoin-qt.rc
+    doc/*.rst doc/*.txt doc/README README.md res/Ember-Qt.rc
 
-windows:DEFINES += WIN32
-windows:RC_FILE = src/qt/res/bitcoin-qt.rc
+win32:DEFINES += WIN32
+win32:RC_FILE = src/qt/res/Ember-Qt.rc
+win32:QMAKE_RC = $${CROSS_COMPILE}windres --use-temp-file
 
-windows:!contains(MINGW_THREAD_BUGFIX, 0) {
+win32:!contains(MINGW_THREAD_BUGFIX, 0) {
     # At least qmake's win32-g++-cross profile is missing the -lmingwthrd
     # thread-safety flag. GCC has -mthreads to enable this, but it doesn't
     # work with static linking. -lmingwthrd must come BEFORE -lmingw, so
@@ -458,6 +466,8 @@ windows:!contains(MINGW_THREAD_BUGFIX, 0) {
     DEFINES += _MT BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN
     QMAKE_LIBS_QT_ENTRY = -lmingwthrd $$QMAKE_LIBS_QT_ENTRY
 }
+win32:QMAKE_LIBS_QT_ENTRY = -Wl,-Bstatic $$QMAKE_LIBS_QT_ENTRY
+
 
 macx:HEADERS += src/qt/macnotificationhandler.h src/qt/macdockiconhandler.h
 macx:OBJECTIVE_SOURCES += src/qt/macnotificationhandler.mm src/qt/macdockiconhandler.mm
@@ -485,11 +495,11 @@ LIBS += -lcrypto
 LIBS += -ldb_cxx$$BDB_LIB_SUFFIX
 LIBS += -lboost_system$$BOOST_THREAD_LIB_SUFFIX
 LIBS += -lboost_filesystem$$BOOST_LIB_SUFFIX
-LIBS += -lboost_program_options$$BOOST_LIB_SUFFIX
+LIBS += -lboost_program_options$$BOOST_THREAD_STATIC_LIB_SUFFIX
 LIBS += -lboost_thread$$BOOST_THREAD_LIB_SUFFIX
-windows:LIBS += -lboost_chrono$$BOOST_LIB_SUFFIX
+win32:LIBS += -lboost_chrono$$BOOST_LIB_SUFFIX
 # -lgdi32 has to happen after -lcrypto (see  #681)
-windows:LIBS += -lws2_32 -lshlwapi -lmswsock -lole32 -loleaut32 -luuid -lgdi32
+win32:LIBS += -lws2_32 -lshlwapi -lmswsock -lole32 -loleaut32 -luuid -lgdi32
 
 contains(RELEASE, 1) {
     linux {
