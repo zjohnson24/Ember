@@ -16,7 +16,6 @@
 #include "ui_interface.h"
 #include "paymentserver.h"
 #include "compat.h"
-#include "tmp_nodes.h"
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
 #endif

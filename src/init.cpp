@@ -12,7 +12,6 @@
 #include "util.h"
 #include "ui_interface.h"
 #include "checkpoints.h"
-#include "tmp_nodes.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
 #include "walletdb.h"
