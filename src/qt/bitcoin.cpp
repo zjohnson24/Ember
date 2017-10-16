@@ -290,8 +290,6 @@ int main(int argc, char *argv[])
                 QObject::connect(paymentServer, SIGNAL(receivedURI(QString)), &window, SLOT(handleURI(QString)));
                 QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
 
-                IMPORT_ADDNODES;
-
                 app.exec();
 
                 window.hide();

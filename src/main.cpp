@@ -988,16 +988,17 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
     std::string i_str = ss.str();
     LogPrintf("i_str=%s ", i_str);
     if (!ParseFixedPoint(i_str, 8, &amount)) {
-        throw std::runtime_error("CoinCCInterest  E^(r*t) Error converting double to fixed point!\n");
+        // Since this is DETERMINISTICALLY failing on very small amounts and very small times yet clearly within the
+        // quoted minimum for ParseFixedPoint(), we will 0 them out. Shitty, but alas.
+        I = 0.0L;
+        amount = 0;
     }
-    LogPrintf("amount=%d ", amount);
     if (amount < 0) {
         I = 0.0L;
         amount = 0;
     }
-
+    LogPrintf("amount=%d ", amount);
     LogPrintf("I = %d - Ret: %s\n", I, CBigNum(amount).ToString());
-
     return CBigNum(amount);
 }
 
