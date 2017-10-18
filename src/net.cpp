@@ -1027,8 +1027,7 @@ void MapPort(bool)
 void ThreadDNSAddressSeed()
 {
     // goal: only query DNS seeds if address need is acute
-    if ((addrman.size() > 0) &&
-        (!GetBoolArg("-forcednsseed", false))) {
+    if ((addrman.size() > 0) && (!GetBoolArg("-forcednsseed", false))) {
         MilliSleep(11 * 1000);
 
         LOCK(cs_vNodes);
@@ -1043,7 +1042,7 @@ void ThreadDNSAddressSeed()
     int tries = 0;
     LogPrintf("Loading addresses from DNS seeds (could take a while)\n");
 
-    // We try again until we have at least 12 and we have tried less than 24 times.
+    // We try again until we have at least 15 and we have tried less than 24 times.
     while (found < 16 && tries < 24) {
         BOOST_FOREACH(const CDNSSeedData &seed, vSeeds) {
             if (HaveNameProxy()) {
@@ -1064,10 +1063,13 @@ void ThreadDNSAddressSeed()
             }
         }
         ++tries;
-        MilliSleep(16*1000); // every 16 seconds
-        if (ShutdownRequested()) {
-            LogPrintf("DNS Seed retrial interrupted by shutdown.\n");
-            return;
+        // every 16 seconds
+        for (int i=0; i < 32; i++ ) {
+            MilliSleep(500);
+            if (ShutdownRequested()) {
+                LogPrintf("DNS Seed retrial interrupted by shutdown.\n");
+                return;
+            }
         }
     }
 
