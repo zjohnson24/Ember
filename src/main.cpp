@@ -988,16 +988,17 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
     std::string i_str = ss.str();
     LogPrintf("i_str=%s ", i_str);
     if (!ParseFixedPoint(i_str, 8, &amount)) {
-        throw std::runtime_error("CoinCCInterest  E^(r*t) Error converting double to fixed point!\n");
+        // Since this is DETERMINISTICALLY failing on very small amounts and very small times yet clearly within the
+        // quoted minimum for ParseFixedPoint(), we will 0 them out. Shitty, but alas.
+        I = 0.0L;
+        amount = 0;
     }
-    LogPrintf("amount=%d ", amount);
     if (amount < 0) {
         I = 0.0L;
         amount = 0;
     }
-
+    LogPrintf("amount=%d ", amount);
     LogPrintf("I = %d - Ret: %s\n", I, CBigNum(amount).ToString());
-
     return CBigNum(amount);
 }
 
@@ -1035,11 +1036,9 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
     } else if (t > future) {
         Rate = lerp(7.2L, 0.72L, quad_ease_io((t-future)/(far_future-future)));
     } else if (t > past) {
-        Rate = lerp((72.0L * 33 / (365 * 33.0L + 8)), 7.2L, quad_ease_io((t-past)/(future-past)));
+        Rate = lerp(71.9522L, 7.2L, quad_ease_io((t-past)/(future-past)));
     } else {
-        Rate = (72.0L * 33 / (365 * 33.0L + 8));
-        // 0.1930294906166219839142091152815
-        // 19712934
+        Rate = 71.9522L;
     }
 
     // ppcoin: total coin age spent in transaction, in the unit of coin-days.

@@ -89,6 +89,8 @@ public:
 
         vSeeds.push_back(CDNSSeedData("emb_00.0xify.com", "emb_00.0xify.com")); // Underscore FreeBSD Server
         vSeeds.push_back(CDNSSeedData("emb_01.0xify.com", "emb_01.0xify.com")); // Underscore Debian Server
+        vSeeds.push_back(CDNSSeedData("emb_02.0xify.com", "emb_02.0xify.com")); // konez2k VPS
+
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,92);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,110);

@@ -1,6 +1,6 @@
 TEMPLATE = app
 TARGET = Ember-Qt
-VERSION = 1.1.4.0
+VERSION = 1.1.5.0
 INCLUDEPATH += src src/json src/qt
 QT += network
 DEFINES += ENABLE_WALLET
@@ -13,6 +13,7 @@ DEFINES += __NO_SYSTEM_INCLUDES
 CONFIG += no_include_pwd
 CONFIG += thread
 win32:CONFIG += static
+win32:QMAKE_CXXFLAGS += -std=c++98
 
 DESTDIR_TARGET = $${DESTDIR}$${TARGET}.exe
 

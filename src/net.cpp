@@ -1027,12 +1027,11 @@ void MapPort(bool)
 void ThreadDNSAddressSeed()
 {
     // goal: only query DNS seeds if address need is acute
-    if ((addrman.size() > 0) &&
-        (!GetBoolArg("-forcednsseed", false))) {
+    if ((addrman.size() > 0) && (!GetBoolArg("-forcednsseed", false))) {
         MilliSleep(11 * 1000);
 
         LOCK(cs_vNodes);
-        if (vNodes.size() >= 2) {
+        if (vNodes.size() >= 8) {
             LogPrintf("P2P peers available. Skipped DNS seeding.\n");
             return;
         }
@@ -1040,27 +1039,37 @@ void ThreadDNSAddressSeed()
 
     const vector<CDNSSeedData> &vSeeds = Params().DNSSeeds();
     int found = 0;
-
+    int tries = 0;
     LogPrintf("Loading addresses from DNS seeds (could take a while)\n");
 
-    BOOST_FOREACH(const CDNSSeedData &seed, vSeeds) {
-        if (HaveNameProxy()) {
-            AddOneShot(seed.host);
-        } else {
-            vector<CNetAddr> vIPs;
-            vector<CAddress> vAdd;
-            if (LookupHost(seed.host.c_str(), vIPs))
-            {
-                BOOST_FOREACH(CNetAddr& ip, vIPs)
-                {
-                    int nOneDay = 24*3600;
-                    CAddress addr = CAddress(CService(ip, Params().GetDefaultPort()));
-                    addr.nTime = GetTime() - 3*nOneDay - GetRand(4*nOneDay); // use a random age between 3 and 7 days old
-                    vAdd.push_back(addr);
-                    found++;
+    // We try again until we have at least 15 and we have tried less than 24 times.
+    while (found < 16 && tries < 24) {
+        BOOST_FOREACH(const CDNSSeedData &seed, vSeeds) {
+            if (HaveNameProxy()) {
+                AddOneShot(seed.host);
+            } else {
+                vector<CNetAddr> vIPs;
+                vector<CAddress> vAdd;
+                if (LookupHost(seed.host.c_str(), vIPs)) {
+                    BOOST_FOREACH(CNetAddr& ip, vIPs) {
+                        int nOneDay = 24*3600;
+                        CAddress addr = CAddress(CService(ip, Params().GetDefaultPort()));
+                        addr.nTime = GetTime() - 3*nOneDay - GetRand(4*nOneDay); // use a random age between 3 and 7 days old
+                        vAdd.push_back(addr);
+                        found++;
+                    }
                 }
+                addrman.Add(vAdd, CNetAddr(seed.name, true));
             }
-            addrman.Add(vAdd, CNetAddr(seed.name, true));
+        }
+        ++tries;
+        // every 16 seconds
+        for (int i=0; i < 32; i++ ) {
+            MilliSleep(500);
+            if (ShutdownRequested()) {
+                LogPrintf("DNS Seed retrial interrupted by shutdown.\n");
+                return;
+            }
         }
     }
 
