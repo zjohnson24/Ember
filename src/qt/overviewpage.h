@@ -27,6 +27,7 @@ public:
     void setClientModel(ClientModel *clientModel);
     void setWalletModel(WalletModel *walletModel);
     void showOutOfSyncWarning(bool fShow);
+    bool getOutOfSyncWarning(void);
 
 public slots:
     void setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 immatureBalance);
@@ -45,6 +46,7 @@ private:
 
     TxViewDelegate *txdelegate;
     TransactionFilterProxy *filter;
+    bool is_out_of_sync;
 
 private slots:
     void updateDisplayUnit();
