@@ -984,7 +984,8 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
     I = P.getuint64() * (pow(E, r*t) - 1.0L);
     std::ostringstream ss;
     ss.imbue(std::locale::classic());
-    ss << I;
+    ss.precision(8);
+    ss << std::fixed << I;
     std::string i_str = ss.str();
     LogPrintf("i_str=%s ", i_str);
     if (!ParseFixedPoint(i_str, 8, &amount)) {
@@ -1036,9 +1037,9 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
     } else if (t > future) {
         Rate = lerp(7.2L, 0.72L, quad_ease_io((t-future)/(far_future-future)));
     } else if (t > past) {
-        Rate = lerp(71.9522L, 7.2L, quad_ease_io((t-past)/(future-past)));
+        Rate = lerp(62.711981L, 7.2L, quad_ease_io((t-past)/(future-past)));
     } else {
-        Rate = 71.9522L;
+        Rate = 62.711981L;
     }
 
     // ppcoin: total coin age spent in transaction, in the unit of coin-days.
@@ -1076,11 +1077,10 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
             continue; // only count coins meeting min age requirement
 
         Coins = txPrev.vout[txin.prevout.n].nValue;
-        // 50000000000000
         Age = (t-txPrev.nTime);
         bnCentSecond += Coins * Age / CENT;
         Coins /= COIN;
-        nSubsidyFactually += (CoinCCInterest(Coins, Rate, Age/(365.25 * 24 * 3600)) - Coins);
+        nSubsidyFactually += CoinCCInterest(Coins, Rate, Age/(365.25L * 24.0L * 3600.0L));
         LogPrintf("COINage coin*age Coins=%s nTimeDiff=%d bnCentSecond=%s Age=%d AgeOverYearSeconds=%d SubsidyFactually=%s Rate=%d\n", Coins.ToString(), t - txPrev.nTime, bnCentSecond.ToString(), Age, Age/(365.25 * 24 * 3600), nSubsidyFactually.ToString(), Rate);
     }
 
@@ -1609,7 +1609,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 		    past = APPROX(2017, 10, 3, 0, 0, 0);
 		} else {
 		    // main net
-		    past = APPROX(2017, 11, 0, 0, 0, 0);
+		    past = APPROX(2017, 11, 1, 0, 0, 0);
 		}
 
         if (time_on_block < past) {
