@@ -36,7 +36,7 @@ static const int PROTOCOL_VERSION = 77780;
 static const int INIT_PROTO_VERSION = 210;
 
 // disconnect from peers older than this proto version
-static const int MIN_PEER_PROTO_VERSION = 77780;
+static const int MIN_PEER_PROTO_VERSION = 77779;
 
 // nTime field added to CAddress, starting with this version;
 // if possible, avoid requesting addresses nodes older than this
