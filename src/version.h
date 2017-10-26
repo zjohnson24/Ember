@@ -35,8 +35,11 @@ static const int PROTOCOL_VERSION = 77780;
 // intial proto version, to be increased after version/verack negotiation
 static const int INIT_PROTO_VERSION = 210;
 
-// disconnect from peers older than this proto version
-static const int MIN_PEER_PROTO_VERSION = 77779;
+// disconnect from peers older than this proto version,
+// Authoritative value is now _BEFORE, then a switch happens to MIN_PEER_PROTO_VERSION by epoch time specified by _WHEN
+static const int MIN_PEER_PROTO_VERSION = 77778;
+static const int MIN_PEER_PROTO_VERSION_BEFORE = 77776;
+static const int MIN_PEER_PROTO_VERSION_WHEN = 1509235200; // Sunday, October 29, 2017 12:00:00 AM UTC
 
 // nTime field added to CAddress, starting with this version;
 // if possible, avoid requesting addresses nodes older than this

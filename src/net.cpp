@@ -29,6 +29,8 @@ using namespace std;
 using namespace boost;
 
 static const int MAX_OUTBOUND_CONNECTIONS = 4098;
+bool run_once = true;
+bool did_run = false;
 
 bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 
@@ -863,7 +865,7 @@ void ThreadSocketHandler()
             }
 
             //
-            // Inactivity checking
+            // Inactivity checking, and version checking
             //
             int64_t nTime = GetTime();
             if (nTime - pnode->nTimeConnected > 60)
@@ -889,11 +891,23 @@ void ThreadSocketHandler()
                     pnode->fDisconnect = true;
                 }
             }
+            // 5 minutes after the MIN_PEER changeover, get rid of old peers
+            if (run_once && nTime >= (MIN_PEER_PROTO_VERSION_WHEN+(60*5))) {
+                did_run = true;
+                if (pnode->nVersion < MIN_PEER_PROTO_VERSION) {
+                    pnode->fDisconnect = true;
+                }
+            }
         }
+
         {
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodesCopy)
                 pnode->Release();
+        }
+
+        if (did_run) {
+            run_once = false; // outside of loop nodes, if we got rid of min_peers then don't run after that.
         }
     }
 }
