@@ -126,6 +126,7 @@ isEmpty(OPENSSL_LIB_PATH) {
 
 isEmpty(BDB_LIB_PATH) {
     macx:BDB_LIB_PATH = /usr/local/Cellar/berkeley-db/6.2.32/lib
+    linux:BDB_INCLUDE_PATH = /usr/local/BerkeleyDB6.2/lib
     win32:BDB_LIB_PATH=$$PWD/deps/db-6.1.26/build_unix
 }
 
@@ -135,6 +136,7 @@ isEmpty(BDB_LIB_SUFFIX) {
 
 isEmpty(BDB_INCLUDE_PATH) {
     macx:BDB_INCLUDE_PATH = /usr/local/Cellar/berkeley-db/6.2.32/include
+    linux:BDB_INCLUDE_PATH = /usr/local/BerkeleyDB6.2/include
     win32:BDB_INCLUDE_PATH=$$PWD/deps/db-6.1.26/build_unix
 }
 
@@ -506,23 +508,22 @@ contains(RELEASE, 1) {
     linux {
         # Linux: turn dynamic linking back on for c/c++ runtime libraries
         LIBS += -Wl,-Bdynamic
+        binfile.files += release/Ember-qt
+        binfile.path = /usr/bin
+        icon.files += src/qt/res/icons/Ember_64x64.png
+        icon.path = /usr/share/ember-qt/
+        shortcut.files += share/linux/ember-qt.desktop
+        shortcut.path += /usr/share/applications/
+
+        INSTALLS += binfile
+        INSTALLS += icon
+        INSTALLS += shortcut
     }
 }
 
 linux {
     DEFINES += LINUX
     LIBS += -lrt -ldl
-
-    binfile.files += release/Ember-qt
-    binfile.path = /usr/bin
-    icon.files += src/qt/res/icons/Ember_64x64.png
-    icon.path = /usr/share/ember-qt/
-    shortcut.files += share/linux/ember-qt.desktop
-    shortcut.path += /usr/share/applications/
-
-    INSTALLS += binfile
-    INSTALLS += icon
-    INSTALLS += shortcut
 }
 
 system($$QMAKE_LRELEASE -silent $$_PRO_FILE_)
