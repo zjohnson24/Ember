@@ -508,7 +508,7 @@ contains(RELEASE, 1) {
     linux {
         # Linux: turn dynamic linking back on for c/c++ runtime libraries
         LIBS += -Wl,-Bdynamic
-        binfile.files += release/Ember-qt
+        binfile.files += release/Ember-Qt
         binfile.path = /usr/bin
         icon.files += src/qt/res/icons/Ember_64x64.png
         icon.path = /usr/share/ember-qt/
