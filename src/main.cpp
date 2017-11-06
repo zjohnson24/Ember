@@ -984,20 +984,22 @@ CBigNum CoinCCInterest(CBigNum P, double r, double t) {
     I = P.getuint64() * (pow(E, r*t) - 1.0L);
     std::ostringstream ss;
     ss.imbue(std::locale::classic());
-    ss << I;
+    ss.precision(8);
+    ss << std::fixed << I;
     std::string i_str = ss.str();
     LogPrintf("i_str=%s ", i_str);
     if (!ParseFixedPoint(i_str, 8, &amount)) {
-        throw std::runtime_error("CoinCCInterest  E^(r*t) Error converting double to fixed point!\n");
+        // Since this is DETERMINISTICALLY failing on very small amounts and very small times yet clearly within the
+        // quoted minimum for ParseFixedPoint(), we will 0 them out. Shitty, but alas.
+        I = 0.0L;
+        amount = 0;
     }
-    LogPrintf("amount=%d ", amount);
     if (amount < 0) {
         I = 0.0L;
         amount = 0;
     }
-
+    LogPrintf("amount=%d ", amount);
     LogPrintf("I = %d - Ret: %s\n", I, CBigNum(amount).ToString());
-
     return CBigNum(amount);
 }
 
@@ -1021,10 +1023,10 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
         far_far_future = APPROX(2017, 10, 4, 20, 0, 0);
     } else {
         // main net
-        past = APPROX(2017, 11, 0, 0, 0, 0);
-        future = APPROX(2017, 11, 3, 0, 0, 0);
-        far_future = APPROX(2018, 11, 0, 0, 0, 0);
-        far_far_future = APPROX(2019, 11, 0, 0, 0, 0);
+        past = APPROX(2017, 11, 1, 0, 0, 0);
+        future = APPROX(2017, 11, 4, 0, 0, 0);
+        far_future = APPROX(2018, 11, 1, 0, 0, 0);
+        far_far_future = APPROX(2019, 11, 1, 0, 0, 0);
     }
     CBigNum nSubsidyFactually(0);
 
@@ -1035,11 +1037,9 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
     } else if (t > future) {
         Rate = lerp(7.2L, 0.72L, quad_ease_io((t-future)/(far_future-future)));
     } else if (t > past) {
-        Rate = lerp((72.0L * 33 / (365 * 33.0L + 8)), 7.2L, quad_ease_io((t-past)/(future-past)));
+        Rate = lerp(62.711981L, 7.2L, quad_ease_io((t-past)/(future-past)));
     } else {
-        Rate = (72.0L * 33 / (365 * 33.0L + 8));
-        // 0.1930294906166219839142091152815
-        // 19712934
+        Rate = 62.711981L;
     }
 
     // ppcoin: total coin age spent in transaction, in the unit of coin-days.
@@ -1077,11 +1077,10 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
             continue; // only count coins meeting min age requirement
 
         Coins = txPrev.vout[txin.prevout.n].nValue;
-        // 50000000000000
         Age = (t-txPrev.nTime);
         bnCentSecond += Coins * Age / CENT;
         Coins /= COIN;
-        nSubsidyFactually += (CoinCCInterest(Coins, Rate, Age/(365.25 * 24 * 3600)) - Coins);
+        nSubsidyFactually += CoinCCInterest(Coins, Rate, Age/(365.25L * 24.0L * 3600.0L));
         LogPrintf("COINage coin*age Coins=%s nTimeDiff=%d bnCentSecond=%s Age=%d AgeOverYearSeconds=%d SubsidyFactually=%s Rate=%d\n", Coins.ToString(), t - txPrev.nTime, bnCentSecond.ToString(), Age, Age/(365.25 * 24 * 3600), nSubsidyFactually.ToString(), Rate);
     }
 
@@ -1610,7 +1609,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 		    past = APPROX(2017, 10, 3, 0, 0, 0);
 		} else {
 		    // main net
-		    past = APPROX(2017, 11, 0, 0, 0, 0);
+		    past = APPROX(2017, 11, 1, 0, 0, 0);
 		}
 
         if (time_on_block < past) {
@@ -2964,8 +2963,14 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         CAddress addrFrom;
         uint64_t nNonce = 1;
         vRecv >> pfrom->nVersion >> pfrom->nServices >> nTime >> addrMe;
-        if (pfrom->nVersion < MIN_PEER_PROTO_VERSION)
-        {
+
+        int64_t currTime = GetTime();
+        int MinPeerVersion = MIN_PEER_PROTO_VERSION_BEFORE;
+        if (currTime >= MIN_PEER_PROTO_VERSION_WHEN) {
+            MinPeerVersion = MIN_PEER_PROTO_VERSION;
+        }
+
+        if (pfrom->nVersion < MinPeerVersion) {
             // disconnect from peers older than this proto version
             LogPrintf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString(), pfrom->nVersion);
             pfrom->fDisconnect = true;

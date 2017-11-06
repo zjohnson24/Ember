@@ -1990,7 +1990,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             past = APPROX(2017, 10, 3, 0, 0, 0);
         } else {
             // main net
-            past = APPROX(2017, 11, 0, 0, 0, 0);
+            past = APPROX(2017, 11, 1, 0, 0, 0);
         }
 
         if (time_on_block < past) {
