@@ -31,7 +31,8 @@ Web and Social
 Blockchain and Market Capitalization
 ------------------------------------
 * [CoinMarketCap](https://coinmarketcap.com/currencies/embercoin/#charts)
-* [Block Explorer](http://www.presstab.pw/phpexplorer/EMB/index.php)
+* [Official Block Explorer](http://explorer.embercoin.io/)
+* [Unofficial Block Explorer](http://www.embexplorer.tk/EMB/)
 
 Exchanges
 ---------
@@ -48,4 +49,3 @@ Most used wiki pages
 --------------------
 * [Frequently Asked Questions](https://github.com/EmberCoin/Ember/wiki/Frequently-Asked-Questions)
 * [Wish List](https://github.com/EmberCoin/Ember/wiki/Wish-List)
-* [Project Roadmap](https://github.com/EmberCoin/Ember/wiki/Project-Roadmap)

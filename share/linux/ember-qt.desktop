@@ -1,10 +1,11 @@
+#!/usr/bin/env xdg-open
 [Desktop Entry]
 Version=1.0
 Name=Ember-Qt
 GenericName=Ember Qt Wallet
 Comment=Ember Coin Wallet
 Icon=/usr/share/ember-qt/Ember_64x64.png
-Exec=Ember-qt
+Exec=Ember-Qt
 Terminal=false
 Type=Application
 Categories=Utility;Application;
