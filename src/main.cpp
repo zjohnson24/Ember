@@ -1632,7 +1632,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
                 LogPrintf("ConnectBlock() : coinstake is old on block! (actual_new=%s == calculated_bf=%s)\n",
                           nNewStakeReward.ToString(), nCalculatedStakeReward_bf.ToString());
 
-            } else if (nNewStakeReward > nNewCalculatedStakeReward) {
+            } else if (nNewStakeReward > (3+nNewCalculatedStakeReward)) { // This should allow enough room for FPU differences with the decreasing rate yet be small enough to be trivial
                 return DoS(100, error("ConnectBlock() : coinstake pays too much\n\t(nNewStakeReward=%s > nNewCalculatedStakeReward=%s)\n",
                                       nNewStakeReward.ToString(), nNewCalculatedStakeReward.ToString()));
             }
@@ -1646,11 +1646,11 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 
         // PoS ppcoin: track money supply and mint amount info
         if (time_on_block < past) {
-            pindex->nMint = nCalculatedStakeReward_bf.getuint64() + nFees;
-            pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nCalculatedStakeReward_bf.getuint64();
+            pindex->nMint = nStakeReward_bf.getuint64() + nFees;
+            pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nStakeReward_bf.getuint64();
         } else {
-            pindex->nMint = nNewCalculatedStakeReward.getuint64() + nFees;
-            pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nNewCalculatedStakeReward.getuint64();
+            pindex->nMint = nNewStakeReward.getuint64() + nFees;
+            pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nNewStakeReward.getuint64();
         }
     }
 
