@@ -1611,7 +1611,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
         if (time_on_block > future) {
             allowed_variance = 3;
         } else if (time_on_block > past) {
-            allowed_variance = lerp(120, 3, quad_ease_io((t-past)/(future-past)));
+            allowed_variance = lerp(120, 3, quad_ease_io((time_on_block-past)/(future-past)));
         } else {
             allowed_variance = 3;
         }
