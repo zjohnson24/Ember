@@ -3,6 +3,7 @@
 #include <string.h>
 #include "pbkdf2.h"
 
+#ifndef __FreeBSD__
 static inline uint32_t
 be32dec(const void *pp)
 {
@@ -22,7 +23,7 @@ be32enc(void *pp, uint32_t x)
     p[1] = (x >> 16) & 0xff;
     p[0] = (x >> 24) & 0xff;
 }
-
+#endif
 
 
 /* Initialize an HMAC-SHA256 operation with the given key. */
