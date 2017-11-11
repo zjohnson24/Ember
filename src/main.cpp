@@ -1605,13 +1605,19 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
         int64_t time_on_block = vtx[1].nTime;
         time_t past = APPROX(2017, 11, 1, 0, 0, 0);
         time_t future = APPROX(2017, 11, 4, 0, 0, 0);
+        time_t far_future = APPROX(2018, 11, 1, 0, 0, 0);
+        time_t far_far_future = APPROX(2019, 11, 1, 0, 0, 0);
 
         int64_t allowed_variance = 0;
 
-        if (time_on_block > future) {
+        if (time_on_block > far_far_future) {
             allowed_variance = 3;
+        } else if (time_on_block > far_future) {
+            allowed_variance = lerp(10, 3, quad_ease_io((time_on_block-far_future)/(far_far_future-far_future)));
+        } else if (time_on_block > future) {
+            allowed_variance = lerp(30, 10, quad_ease_io((time_on_block-future)/(far_future-future)));;
         } else if (time_on_block > past) {
-            allowed_variance = lerp(120, 3, quad_ease_io((time_on_block-past)/(future-past)));
+            allowed_variance = lerp(120, 30, quad_ease_io((time_on_block-past)/(future-past)));
         } else {
             allowed_variance = 3;
         }
