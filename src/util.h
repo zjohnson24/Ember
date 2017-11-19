@@ -154,17 +154,8 @@ static const unsigned short days[4][12] = {
 #define APPROX(year, month, day, hour, minute, second) \
 (((((year-1970)/4*(365*4+1)+days[(year-1970)%4][month-1]+(day-1))*24+hour)*60+minute)*60+second)
 
-static double quad_ease_io(double t) {
-    if(t < 0.5) {
-        return 2 * t * t;
-    }
-    return (-2 * t * t) + (4 * t) - 1;
-}
-
-static float lerp(double a, double b, double f) {
-    return (a * (1.0 - f)) + (b * f);
-}
-
+double quad_ease_io(double t);
+float lerp(double a, double b, double f);
 void PrintException(std::exception* pex, const char* pszThread);
 void PrintExceptionContinue(std::exception* pex, const char* pszThread);
 void ParseString(const std::string& str, char c, std::vector<std::string>& v);

@@ -82,6 +82,17 @@ bool fNoListen = false;
 bool fLogTimestamps = false;
 volatile bool fReopenDebugLog = false;
 
+double quad_ease_io(double t) {
+    if(t < 0.5) {
+        return 2 * t * t;
+    }
+    return (-2 * t * t) + (4 * t) - 1;
+}
+
+float lerp(double a, double b, double f) {
+    return (a * (1.0 - f)) + (b * f);
+}
+
 // Init OpenSSL library multithreading support
 static CCriticalSection** ppmutexOpenSSL;
 void locking_callback(int mode, int i, const char* file, int line)
