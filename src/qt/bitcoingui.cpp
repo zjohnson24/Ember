@@ -63,7 +63,7 @@
 extern CWallet* pwalletMain;
 extern int64_t nLastCoinStakeSearchInterval;
 extern int64_t nCoinStakeFailedAttempts;
-double GetPoSKernelPS();
+CBigNum GetPoSKernelPS();
 
 BitcoinGUI::BitcoinGUI(QWidget *parent):
     QMainWindow(parent),
@@ -992,13 +992,13 @@ void BitcoinGUI::updateStakingIcon()
     if (nLastCoinStakeSearchInterval && nWeight && (!overviewPage->getOutOfSyncWarning()))
     {
         uint64_t nWeight = this->nWeight;
-        uint64_t nNetworkWeight = GetPoSKernelPS();
+        CBigNum nNetworkWeight = GetPoSKernelPS();
 
         nWeight /= COIN;
         nNetworkWeight /= COIN;
 
         labelStakingIcon->setPixmap(QIcon(":/icons/staking_on").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
-        labelStakingIcon->setToolTip(tr("You Are Staking!<br>Your Weight: %1<br>Network Weight: %2<br>Attempts Signing PoS Blocks: %3").arg(nWeight).arg(nNetworkWeight).arg(nCoinStakeFailedAttempts));
+        labelStakingIcon->setToolTip(tr("You Are Staking!<br>Your Weight: %1<br>Network Weight: %2<br>Attempts Signing PoS Blocks: %3").arg(nWeight).arg(nNetworkWeight.getuint64()).arg(nCoinStakeFailedAttempts));
     }
     else
     {

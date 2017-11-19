@@ -8,6 +8,8 @@
 
 #include "uint256.h"
 #include "rpcprotocol.h"
+#include "bignum.h"
+
 
 #include <list>
 #include <map>
@@ -82,7 +84,7 @@ extern json_spirit::Value ValueFromAmount(int64_t amount);
 extern double GetDifficulty(const CBlockIndex* blockindex = NULL);
 
 extern double GetPoWMHashPS();
-extern double GetPoSKernelPS();
+extern CBigNum GetPoSKernelPS();
 
 extern std::string HelpRequiringPassphrase();
 extern void EnsureWalletIsUnlocked();

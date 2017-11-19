@@ -72,39 +72,30 @@ double GetPoWMHashPS()
     return GetDifficulty() * 4294.967296 / nTargetSpacingWork;
 }
 
-double GetPoSKernelPS()
-{
+CBigNum GetPoSKernelPS() {
     int nPoSInterval = 72;
-    double dStakeKernelsTriedAvg = 0;
-    int nStakesHandled = 0, nStakesTime = 0;
+    int nStakesHandled = 0;
+    double nStakesTime = 0.0;
+    CBigNum nStakesTracked = 0;
 
-    CBlockIndex* pindex = pindexBest;;
-    CBlockIndex* pindexPrevStake = NULL;
+    CBlockIndex* p = pindexBest;
+    CBlockIndex* p_prev = NULL;
 
-    while (pindex && nStakesHandled < nPoSInterval)
-    {
-        if (pindex->IsProofOfStake())
-        {
-            if (pindexPrevStake)
-            {
-                dStakeKernelsTriedAvg += GetDifficulty(pindexPrevStake) * 4294967296.0;
-                nStakesTime += pindexPrevStake->nTime - pindex->nTime;
+    while (p && nStakesHandled < nPoSInterval) {
+        if (p->IsProofOfStake()) {
+            if (p_prev) {
+                nStakesTime = (p_prev->nTime - p->nTime);
+                if (nStakesTime > 0.000000001) {
+                    nStakesTracked += (int64_t)((GetDifficulty(p_prev) * 4967296.0) / nStakesTime);
+                }
                 nStakesHandled++;
             }
-            pindexPrevStake = pindex;
+            p_prev = p;
         }
-
-        pindex = pindex->pprev;
+        p = p->pprev;
     }
-
-    double result = 0;
-
-    if (nStakesTime)
-        result = dStakeKernelsTriedAvg / nStakesTime;
-
-    result *= STAKE_TIMESTAMP_MASK + 1;
-
-    return result;
+    nStakesTracked *= STAKE_TIMESTAMP_MASK + 1;
+    return nStakesTracked;
 }
 
 Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPrintTransactionDetail)
