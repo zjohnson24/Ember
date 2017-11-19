@@ -90,38 +90,28 @@ QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wno-ignored-qu
 
 isEmpty(MINIUPNPC_INCLUDE_PATH) {
     macx:MINIUPNPC_INCLUDE_PATH = /usr/local/Cellar/miniupnpc/2.0.20170509/include
-    win32:MINIUPNPC_INCLUDE_PATH=$$PWD/deps
+    win32:MINIUPNPC_INCLUDE_PATH=$$PWD/deps/miniupnpc
 }
 
 isEmpty(MINIUPNPC_LIB_PATH) {
     macx:MINIUPNPC_LIB_PATH = /usr/local/Cellar/miniupnpc/2.0.20170509/lib
-    win32:MINIUPNPC_LIB_PATH=$$PWD/deps/miniupnpc
+    win32:MINIUPNPC_LIB_PATH=$$PWD/deps/miniupnpc/miniupnpc
 }
 
 # platform specific defaults, if not overridden on command line
 isEmpty(BOOST_LIB_SUFFIX) {
     macx:BOOST_LIB_SUFFIX = -mt
-    win32:BOOST_LIB_SUFFIX = -mgw53-1_55
-}
-
-isEmpty(BOOST_THREAD_LIB_SUFFIX) {
-    win32:BOOST_THREAD_LIB_SUFFIX = -mgw53-mt-1_55
-    else:BOOST_THREAD_LIB_SUFFIX = $$BOOST_LIB_SUFFIX
-}
-
-isEmpty(BOOST_THREAD_STATIC_LIB_SUFFIX) {
-    win32:BOOST_THREAD_STATIC_LIB_SUFFIX = -mgw53-mt-s-1_55
-    else:BOOST_THREAD_STATIC_LIB_SUFFIX = $$BOOST_LIB_SUFFIX
+    win32:BOOST_LIB_SUFFIX = -mgw53-mt-s-1_65_1
 }
 
 isEmpty(OPENSSL_INCLUDE_PATH) {
     macx:OPENSSL_INCLUDE_PATH = /usr/local/Cellar/openssl/1.0.2l/include
-    win32:OPENSSL_INCLUDE_PATH=$$PWD/deps/openssl-1.0.2l/include
+    win32:OPENSSL_INCLUDE_PATH=$$PWD/deps/libressl-2.6.3/include
 }
 
 isEmpty(OPENSSL_LIB_PATH) {
     macx:OPENSSL_LIB_PATH = /usr/local/Cellar/openssl/1.0.2l/lib
-    win32:OPENSSL_LIB_PATH=$$PWD/deps/openssl-1.0.2l
+    win32:OPENSSL_LIB_PATH=$$PWD/deps/libressl-2.6.3/lib
 }
 
 isEmpty(BDB_LIB_PATH) {
@@ -142,12 +132,12 @@ isEmpty(BDB_INCLUDE_PATH) {
 
 isEmpty(BOOST_LIB_PATH) {
     macx:BOOST_LIB_PATH = /usr/local/Cellar/boost/1.65.1/lib
-    win32:BOOST_LIB_PATH=$$PWD/deps/boost_1_55_0/stage/lib
+    win32:BOOST_LIB_PATH=$$PWD/deps/boost_1_65_1/stage/lib
 }
 
 isEmpty(BOOST_INCLUDE_PATH) {
     macx:BOOST_INCLUDE_PATH = /usr/local/Cellar/boost/1.65.1/include
-    win32:BOOST_INCLUDE_PATH=$$PWD/deps/boost_1_55_0
+    win32:BOOST_INCLUDE_PATH=$$PWD/deps/boost_1_65_1
 }
 
 # use: qmake "USE_QRCODE=1"
@@ -496,10 +486,10 @@ LIBS += $$join(QRENCODE_LIB_PATH,,-L,)
 LIBS += -lssl
 LIBS += -lcrypto
 LIBS += -ldb_cxx$$BDB_LIB_SUFFIX
-LIBS += -lboost_system$$BOOST_THREAD_LIB_SUFFIX
+LIBS += -lboost_system$$BOOST_LIB_SUFFIX
 LIBS += -lboost_filesystem$$BOOST_LIB_SUFFIX
-LIBS += -lboost_program_options$$BOOST_THREAD_STATIC_LIB_SUFFIX
-LIBS += -lboost_thread$$BOOST_THREAD_LIB_SUFFIX
+LIBS += -lboost_program_options$$BOOST_LIB_SUFFIX
+LIBS += -lboost_thread$$BOOST_LIB_SUFFIX
 win32:LIBS += -lboost_chrono$$BOOST_LIB_SUFFIX
 # -lgdi32 has to happen after -lcrypto (see  #681)
 win32:LIBS += -lws2_32 -lshlwapi -lmswsock -lole32 -loleaut32 -luuid -lgdi32
