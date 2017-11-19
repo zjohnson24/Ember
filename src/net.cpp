@@ -793,7 +793,7 @@ void ThreadSocketHandler()
                 if (nErr != WSAEWOULDBLOCK)
                     LogPrintf("socket error accept failed: %d\n", nErr);
             }
-            else if (nInbound >= min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 16)))
+            else if (nInbound >= min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 24)))
             {
                 closesocket(hSocket);
             }
@@ -1049,6 +1049,7 @@ void ThreadDNSAddressSeed()
             LogPrintf("P2P peers available. Skipped DNS seeding.\n");
             return;
         }
+
     }
 
     const vector<CDNSSeedData> &vSeeds = Params().DNSSeeds();
@@ -1629,7 +1630,7 @@ void StartNode(boost::thread_group& threadGroup)
 {
     if (semOutbound == NULL) {
         // initialize semaphore
-        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 16));
+        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 24));
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
