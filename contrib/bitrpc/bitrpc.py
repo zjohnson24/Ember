@@ -1,18 +1,13 @@
-from jsonrpc import ServiceProxy
+from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
+
 import sys
 import string
-
-# ===== BEGIN USER SETTINGS =====
-# if you do not set these you will be prompted for a password for every command
-rpcuser = ""
-rpcpass = ""
-# ====== END USER SETTINGS ======
+import urllib2
 
 
-if rpcpass == "":
-	access = ServiceProxy("http://127.0.0.1:8332")
-else:
-	access = ServiceProxy("http://"+rpcuser+":"+rpcpass+"@127.0.0.1:8332")
+# rpc_user and rpc_password are set in the bitcoin.conf file
+access = AuthServiceProxy("http://abc:123@127.0.0.1:10022/")
+
 cmd = sys.argv[1].lower()
 
 if cmd == "backupwallet":
@@ -53,25 +48,18 @@ elif cmd == "getbalance":
 			print access.getbalance()
 	except:
 		print "\n---An error occurred---\n"
+elif cmd == "getbestblockhash":
+        print access.getbestblockhash()
 
 elif cmd == "getblockbycount":
-	try:
-		height = raw_input("Height: ")
-		print access.getblockbycount(height)
-	except:
-		print "\n---An error occurred---\n"
+	height = raw_input("Height: ")
+	print access.getblockbycount(height)
 
 elif cmd == "getblockcount":
-	try:
-		print access.getblockcount()
-	except:
-		print "\n---An error occurred---\n"
+	print access.getblockcount()
 
 elif cmd == "getblocknumber":
-	try:
-		print access.getblocknumber()
-	except:
-		print "\n---An error occurred---\n"
+	print access.getblocknumber()
 
 elif cmd == "getconnectioncount":
 	try:
@@ -98,11 +86,12 @@ elif cmd == "gethashespersec":
 		print "\n---An error occurred---\n"
 
 elif cmd == "getinfo":
-	try:
-		print access.getinfo()
-	except:
-		print "\n---An error occurred---\n"
-
+	print access.getinfo()
+elif cmd == "getpeerinfo":
+	print access.getpeerinfo()
+elif cmd == "addnode":
+        cmd = raw_input("node addr:port to add?: ")
+	print access.addnode(cmd, "add")
 elif cmd == "getnewaddress":
 	try:
 		acct = raw_input("Enter an account name: ")
@@ -143,14 +132,11 @@ elif cmd == "gettransaction":
 		print "\n---An error occurred---\n"
 
 elif cmd == "getwork":
+	data = raw_input("Data (optional): ")
 	try:
-		data = raw_input("Data (optional): ")
-		try:
-			print access.gettransaction(data)
-		except:
-			print access.gettransaction()
+		print access.gettransaction(data)
 	except:
-		print "\n---An error occurred---\n"
+		print access.gettransaction()
 
 elif cmd == "help":
 	try:
@@ -288,10 +274,7 @@ elif cmd == "settxfee":
 		print "\n---An error occurred---\n"
 
 elif cmd == "stop":
-	try:
-		print access.stop()
-	except:
-		print "\n---An error occurred---\n"
+	print access.stop()
 
 elif cmd == "validateaddress":
 	try:
