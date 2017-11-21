@@ -1152,12 +1152,12 @@ void ThreadOpenConnections()
     // Initiate network connections
     int64_t nStart = GetTime();
     while (!ShutdownRequested()) {
-        boost::this_thread::interruption_point();
         ProcessOneShot();
 
         MilliSleep(500);
 
         CSemaphoreGrant grant(*semOutbound);
+        boost::this_thread::interruption_point();
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
         if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
@@ -1194,40 +1194,39 @@ void ThreadOpenConnections()
 
         int64_t nANow = GetAdjustedTime();
 
-        int nTries = 0;
-        while (!ShutdownRequested()) {
-            boost::this_thread::interruption_point();
-
+        int nTries = 100;
+        // If we didn't find an appropriate destination after trying 100 addresses fetched from addrman,
+        // stop this loop, and let the outer loop run again (which sleeps, adds seed nodes, recalculates
+        // already-connected network ranges, ...) before trying new addrman addresses.
+        while (nTries-- > 0) {
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
-            if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr))
+            if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr)) {
                 break;
+            }
 
-            // If we didn't find an appropriate destination after trying 100 addresses fetched from addrman,
-            // stop this loop, and let the outer loop run again (which sleeps, adds seed nodes, recalculates
-            // already-connected network ranges, ...) before trying new addrman addresses.
-            nTries++;
-            if (nTries > 100)
-                break;
-
-            if (IsLimited(addr))
+            if (IsLimited(addr)) {
                 continue;
+            }
 
             // only consider very recently tried nodes after 30 failed attempts
-            if (nANow - addr.nLastTry < 600 && nTries < 30)
+            if (nANow - addr.nLastTry < 600 && nTries < 30) {
                 continue;
+            }
 
             // do not allow non-default ports, unless after 50 invalid addresses selected already
-            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50)
+            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50) {
                 continue;
+            }
 
             addrConnect = addr;
             break;
         }
 
-        if (addrConnect.IsValid())
+        if (addrConnect.IsValid()) {
             OpenNetworkConnection(addrConnect, &grant);
+        }
     }
 }
 
@@ -1623,7 +1622,25 @@ void static Discover(boost::thread_group& threadGroup)
         freeifaddrs(myaddrs);
     }
 #endif
+}
 
+void ThreadGetOurExtIP() {
+    struct sockaddr_in *ip;
+    const char *srv;
+    int ret = 0;
+    int tries = 10;
+
+    LogPrintf("STUN: Attempting STUN communication to determine external IP address\n");
+    while (tries-- > 0) {
+        ip = NULL;
+        srv = NULL;
+        if (0 < (ret = GetExtIP(GetRandInt(), ip, srv))) {
+            CNetAddr ip_ret(ip.sin_addr);
+            AddLocal(ip_ret);
+            LogPrintf("STUN: ThreadGetOurExtIP() returned %s, for rc: %u, rc flags: %x, server: %s\n", ip_ret.ToStringIP(), rc >> 8, (uint8_t)rc, srv);
+            return;
+        }
+    }
 }
 
 void StartNode(boost::thread_group& threadGroup)
@@ -1652,6 +1669,9 @@ void StartNode(boost::thread_group& threadGroup)
     // Map ports with UPnP
     MapPort(GetBoolArg("-upnp", USE_UPNP));
 #endif
+
+    // Get out external IP via the STUN protocol
+    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "extip", &ThreadGetOurExtIP));
 
     // Send and receive from sockets, accept connections
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "net", &ThreadSocketHandler));
