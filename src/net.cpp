@@ -1623,7 +1623,7 @@ void static Discover(boost::thread_group& threadGroup)
     }
 #endif
 }
-
+/*
 void ThreadGetOurExtIP() {
     struct sockaddr_in *ip;
     const char *srv;
@@ -1642,7 +1642,7 @@ void ThreadGetOurExtIP() {
         }
     }
 }
-
+*/
 void StartNode(boost::thread_group& threadGroup)
 {
     if (semOutbound == NULL) {
@@ -1671,7 +1671,7 @@ void StartNode(boost::thread_group& threadGroup)
 #endif
 
     // Get out external IP via the STUN protocol
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "extip", &ThreadGetOurExtIP));
+    // threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "extip", &ThreadGetOurExtIP));
 
     // Send and receive from sockets, accept connections
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "net", &ThreadSocketHandler));
