@@ -22,17 +22,16 @@ The Ember project has been mining on an old wallet that has been abandoned. The 
 
 Web and Social
 --------------
-[Official Website](https://www.embercoin.io/)
-[Twitter](https://twitter.com/emberblockchain)
-[Discord Group](https://discordapp.com/invite/UnYqVNJ)
-[Facebook](https://www.facebook.com/groups/officialembercoin/)
-[Reddit](https://www.reddit.com/r/embercoin/)
+* [Official Website](https://www.embercoin.io/)
+* [Twitter](https://twitter.com/emberblockchain)
+* [Discord Group](https://discordapp.com/invite/UnYqVNJ)
+* [Facebook](https://www.facebook.com/groups/officialembercoin/)
+* [Reddit](https://www.reddit.com/r/embercoin/)
 
 Blockchain and Market Capitalization
 ------------------------------------
 * [CoinMarketCap](https://coinmarketcap.com/currencies/embercoin/#charts)
-* [Official Block Explorer](http://explorer.embercoin.io/)
-* [Unofficial Block Explorer](http://www.embexplorer.tk/EMB/)
+* [Official Block Explorer](http://www.embexplorer.tk/EMB/)
 
 Exchanges
 ---------
@@ -42,8 +41,7 @@ Exchanges
 
 Mining Pools
 ------------
-* [CoinMiners](http://coinminers.net/)
-* [SnowmanCoins](http://pool.snowmancoins.com/)
+* [BrutumPool](http://brutum-pool.com/)
 
 Most used wiki pages
 --------------------
