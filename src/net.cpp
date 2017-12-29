@@ -632,24 +632,18 @@ void SocketSendData(CNode *pnode)
 
 static list<CNode*> vNodesDisconnected;
 
-void ThreadSocketHandler()
-{
+void ThreadSocketHandler() {
     unsigned int nPrevNodeCount = 0;
 
-    while (!ShutdownRequested())
-    {
-        //
+    while (!ShutdownRequested()) {
         // Disconnect nodes
-        //
         {
             LOCK(cs_vNodes);
             // Disconnect unused nodes
             vector<CNode*> vNodesCopy = vNodes;
-            BOOST_FOREACH(CNode* pnode, vNodesCopy)
-            {
+            BOOST_FOREACH(CNode* pnode, vNodesCopy) {
                 if (pnode->fDisconnect ||
-                    (pnode->GetRefCount() <= 0 && pnode->vRecvMsg.empty() && pnode->nSendSize == 0 && pnode->ssSend.empty()))
-                {
+                    (pnode->GetRefCount() <= 0 && pnode->vRecvMsg.empty() && pnode->nSendSize == 0 && pnode->ssSend.empty())) {
                     // remove from vNodes
                     vNodes.erase(remove(vNodes.begin(), vNodes.end(), pnode), vNodes.end());
 
@@ -669,11 +663,9 @@ void ThreadSocketHandler()
         {
             // Delete disconnected nodes
             list<CNode*> vNodesDisconnectedCopy = vNodesDisconnected;
-            BOOST_FOREACH(CNode* pnode, vNodesDisconnectedCopy)
-            {
+            BOOST_FOREACH(CNode* pnode, vNodesDisconnectedCopy) {
                 // wait until threads are done using it
-                if (pnode->GetRefCount() <= 0)
-                {
+                if (pnode->GetRefCount() <= 0) {
                     bool fDelete = false;
                     {
                         TRY_LOCK(pnode->cs_vSend, lockSend);
@@ -688,8 +680,7 @@ void ThreadSocketHandler()
                             }
                         }
                     }
-                    if (fDelete)
-                    {
+                    if (fDelete) {
                         vNodesDisconnected.remove(pnode);
                         delete pnode;
                     }
@@ -725,8 +716,7 @@ void ThreadSocketHandler()
         }
         {
             LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode* pnode, vNodes)
-            {
+            BOOST_FOREACH(CNode* pnode, vNodes) {
                 if (pnode->hSocket == INVALID_SOCKET)
                     continue;
                 {
@@ -745,14 +735,11 @@ void ThreadSocketHandler()
             }
         }
 
-        int nSelect = select(have_fds ? hSocketMax + 1 : 0,
-                             &fdsetRecv, &fdsetSend, &fdsetError, &timeout);
+        int nSelect = select(have_fds ? hSocketMax + 1 : 0, &fdsetRecv, &fdsetSend, &fdsetError, &timeout);
         boost::this_thread::interruption_point();
 
-        if (nSelect == SOCKET_ERROR)
-        {
-            if (have_fds)
-            {
+        if (nSelect < 0) {
+            if (have_fds) {
                 int nErr = WSAGetLastError();
                 LogPrintf("socket select error %d\n", nErr);
                 for (unsigned int i = 0; i <= hSocketMax; i++)
@@ -768,8 +755,7 @@ void ThreadSocketHandler()
         // Accept new connections
         //
         BOOST_FOREACH(SOCKET hListenSocket, vhListenSocket)
-        if (hListenSocket != INVALID_SOCKET && FD_ISSET(hListenSocket, &fdsetRecv))
-        {
+        if (hListenSocket != INVALID_SOCKET && FD_ISSET(hListenSocket, &fdsetRecv)) {
             struct sockaddr_storage sockaddr;
             socklen_t len = sizeof(sockaddr);
             SOCKET hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
@@ -787,23 +773,16 @@ void ThreadSocketHandler()
                         nInbound++;
             }
 
-            if (hSocket == INVALID_SOCKET)
-            {
+            if (hSocket == INVALID_SOCKET) {
                 int nErr = WSAGetLastError();
                 if (nErr != WSAEWOULDBLOCK)
                     LogPrintf("socket error accept failed: %d\n", nErr);
-            }
-            else if (nInbound >= min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 24)))
-            {
+            } else if (nInbound >= min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 24))) {
                 closesocket(hSocket);
-            }
-            else if (CNode::IsBanned(addr))
-            {
+            } else if (CNode::IsBanned(addr)) {
                 LogPrintf("connection from %s dropped (banned)\n", addr.ToString());
                 closesocket(hSocket);
-            }
-            else
-            {
+            } else {
                 LogPrint("net", "accepted connection %s\n", addr.ToString());
                 CNode* pnode = new CNode(hSocket, addr, "", true);
                 pnode->AddRef();

@@ -1048,9 +1048,8 @@ void CWallet::ResendWalletTransactions(bool fForce)
 //
 
 
-int64_t CWallet::GetBalance() const
-{
-    int64_t nTotal = 0;
+CBigNum CWallet::GetBalance() const {
+    CBigNum nTotal(0);
     {
         LOCK2(cs_main, cs_wallet);
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
@@ -1064,9 +1063,9 @@ int64_t CWallet::GetBalance() const
     return nTotal;
 }
 
-int64_t CWallet::GetUnconfirmedBalance() const
+CBigNum CWallet::GetUnconfirmedBalance() const
 {
-    int64_t nTotal = 0;
+    CBigNum nTotal(0);
     {
         LOCK2(cs_main, cs_wallet);
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
@@ -1079,9 +1078,9 @@ int64_t CWallet::GetUnconfirmedBalance() const
     return nTotal;
 }
 
-int64_t CWallet::GetImmatureBalance() const
+CBigNum CWallet::GetImmatureBalance() const
 {
-    int64_t nTotal = 0;
+    CBigNum nTotal(0);
     {
         LOCK2(cs_main, cs_wallet);
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
@@ -1168,30 +1167,24 @@ static void ApproximateBestSubset(vector<pair<int64_t, pair<const CWalletTx*,uns
 
     seed_insecure_rand();
 
-    for (int nRep = 0; nRep < iterations && nBest != nTargetValue; nRep++)
-    {
+    for (int nRep = 0; nRep < iterations && nBest != nTargetValue; nRep++) {
         vfIncluded.assign(vValue.size(), false);
         int64_t nTotal = 0;
         bool fReachedTarget = false;
-        for (int nPass = 0; nPass < 2 && !fReachedTarget; nPass++)
-        {
-            for (unsigned int i = 0; i < vValue.size(); i++)
-            {
+        for (int nPass = 0; nPass < 2 && !fReachedTarget; nPass++) {
+            for (unsigned int i = 0; i < vValue.size(); i++) {
                 //The solver here uses a randomized algorithm,
                 //the randomness serves no real security purpose but is just
                 //needed to prevent degenerate behavior and it is important
                 //that the rng fast. We do not use a constant random sequence,
                 //because there may be some privacy improvement by making
                 //the selection random.
-                if (nPass == 0 ? insecure_rand()&1 : !vfIncluded[i])
-                {
+                if (nPass == 0 ? insecure_rand()&1 : !vfIncluded[i]) {
                     nTotal += vValue[i].first;
                     vfIncluded[i] = true;
-                    if (nTotal >= nTargetValue)
-                    {
+                    if (nTotal >= nTargetValue) {
                         fReachedTarget = true;
-                        if (nTotal < nBest)
-                        {
+                        if (nTotal < nBest) {
                             nBest = nTotal;
                             vfBest = vfIncluded;
                         }
@@ -1205,12 +1198,11 @@ static void ApproximateBestSubset(vector<pair<int64_t, pair<const CWalletTx*,uns
 }
 
 // ppcoin: total coins staked (non-spendable until maturity)
-int64_t CWallet::GetStake() const
+CBigNum CWallet::GetStake() const
 {
-    int64_t nTotal = 0;
+    CBigNum nTotal(0);
     LOCK2(cs_main, cs_wallet);
-    for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
-    {
+    for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it) {
         const CWalletTx* pcoin = &(*it).second;
         if (pcoin->IsCoinStake() && pcoin->GetBlocksToMaturity() > 0 && pcoin->GetDepthInMainChain() > 0)
             nTotal += CWallet::GetCredit(*pcoin);
@@ -1218,12 +1210,11 @@ int64_t CWallet::GetStake() const
     return nTotal;
 }
 
-int64_t CWallet::GetNewMint() const
+CBigNum CWallet::GetNewMint() const
 {
-    int64_t nTotal = 0;
+    CBigNum nTotal(0);
     LOCK2(cs_main, cs_wallet);
-    for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
-    {
+    for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it) {
         const CWalletTx* pcoin = &(*it).second;
         if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0 && pcoin->GetDepthInMainChain() > 0)
             nTotal += CWallet::GetCredit(*pcoin);
@@ -1546,7 +1537,7 @@ bool CWallet::SelectCoinsMinConf(int64_t nTargetValue, unsigned int nSpendTime, 
     // Solve subset sum by stochastic approximation
     sort(vValue.rbegin(), vValue.rend(), CompareValueOnly());
     vector<char> vfBest;
-    int64_t nBest;
+    int64_t nBest = 0;
 
     ApproximateBestSubset(vValue, nTotalLower, nTargetValue, vfBest, nBest, 1000);
     if (nBest != nTargetValue && nTotalLower >= nTargetValue + CENT)
@@ -1796,14 +1787,14 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, int64_t nValue, CWalletTx&
 uint64_t CWallet::GetStakeWeight() const
 {
     // Choose coins to use
-    int64_t nBalance = GetBalance();
+    int64_t nBalance = GetBalance().getuint64();
 
     if (nBalance <= nReserveBalance)
         return 0;
 
     vector<const CWalletTx*> vwtxPrev;
 
-    set<pair<const CWalletTx*,unsigned int> > setCoins;
+    set<pair<const CWalletTx*, unsigned int> > setCoins;
     int64_t nValueIn = 0;
 
     if (!SelectCoinsForStaking(nBalance - nReserveBalance, GetTime(), setCoins, nValueIn))
@@ -1846,7 +1837,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     txNew.vout.push_back(CTxOut(0, scriptEmpty));
 
     // Choose coins to use
-    int64_t nBalance = GetBalance();
+    int64_t nBalance = GetBalance().getuint64();
 
     if (nBalance <= nReserveBalance)
         return false;
@@ -1906,8 +1897,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                     }
                     scriptPubKeyOut << key.GetPubKey() << OP_CHECKSIG;
                 }
-                if (whichType == TX_PUBKEY)
-                {
+                if (whichType == TX_PUBKEY) {
                     valtype& vchPubKey = vSolutions[0];
                     if (!keystore.GetKey(Hash160(vchPubKey), key))
                     {

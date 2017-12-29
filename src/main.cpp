@@ -1017,10 +1017,10 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
     time_t far_far_future;
 
     if (TestNet()) {
-        past = APPROX(2017, 10, 3, 0, 0, 0);
-        future = APPROX(2017, 10, 4, 1, 0, 0);
-        far_future = APPROX(2017, 10, 4, 10, 0, 0);
-        far_far_future = APPROX(2017, 10, 4, 20, 0, 0);
+        past = APPROX(2018, 10, 3, 0, 0, 0);
+        future = APPROX(2018, 10, 4, 1, 0, 0);
+        far_future = APPROX(2018, 10, 4, 10, 0, 0);
+        far_far_future = APPROX(2018, 10, 4, 20, 0, 0);
     } else {
         // main net
         past = APPROX(2017, 11, 1, 0, 0, 0);

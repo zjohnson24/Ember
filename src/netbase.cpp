@@ -291,12 +291,10 @@ bool static ConnectSocketDirectly(const CService &addrConnect, SOCKET& hSocketRe
         return false;
     }
 
-    if (connect(hSocket, (struct sockaddr*)&sockaddr, len) == SOCKET_ERROR)
-    {
+    if (connect(hSocket, (struct sockaddr*)&sockaddr, len) == SOCKET_ERROR) {
         int nErr = WSAGetLastError();
         // WSAEINVAL is here because some legacy version of winsock uses it
-        if (nErr == WSAEINPROGRESS || nErr == WSAEWOULDBLOCK || nErr == WSAEINVAL)
-        {
+        if (nErr == WSAEINPROGRESS || nErr == WSAEWOULDBLOCK || nErr == WSAEINVAL) {
             struct timeval timeout;
             timeout.tv_sec  = nTimeout / 1000;
             timeout.tv_usec = (nTimeout % 1000) * 1000;
@@ -305,8 +303,7 @@ bool static ConnectSocketDirectly(const CService &addrConnect, SOCKET& hSocketRe
             FD_ZERO(&fdset);
             FD_SET(hSocket, &fdset);
             int nRet = select(hSocket + 1, NULL, &fdset, NULL, &timeout);
-            if (nRet == 0)
-            {
+            if (nRet == 0) {
                 LogPrint("net", "connection to %s timeout\n", addrConnect.ToString());
                 closesocket(hSocket);
                 return false;

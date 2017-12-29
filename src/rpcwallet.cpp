@@ -483,9 +483,8 @@ Value getreceivedbyaccount(const Array& params, bool fHelp)
 }
 
 
-int64_t GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMinDepth)
-{
-    int64_t nBalance = 0;
+CBigNum GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMinDepth) {
+    CBigNum nBalance(0);
 
     // Tally wallet transactions
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
@@ -508,15 +507,13 @@ int64_t GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMi
     return nBalance;
 }
 
-int64_t GetAccountBalance(const string& strAccount, int nMinDepth)
-{
+CBigNum GetAccountBalance(const string& strAccount, int nMinDepth) {
     CWalletDB walletdb(pwalletMain->strWalletFile);
     return GetAccountBalance(walletdb, strAccount, nMinDepth);
 }
 
 
-Value getbalance(const Array& params, bool fHelp)
-{
+Value getbalance(const Array& params, bool fHelp) {
     if (fHelp || params.size() > 2)
         throw runtime_error(
             "getbalance [account] [minconf=1]\n"
@@ -524,7 +521,7 @@ Value getbalance(const Array& params, bool fHelp)
             "If [account] is specified, returns the balance in the account.");
 
     if (params.size() == 0)
-        return  ValueFromAmount(pwalletMain->GetBalance());
+        return  ValueFromBigNumAmount(pwalletMain->GetBalance());
 
     int nMinDepth = 1;
     if (params.size() > 1)
@@ -534,7 +531,7 @@ Value getbalance(const Array& params, bool fHelp)
         // Calculate total balance a different way from GetBalance()
         // (GetBalance() sums up all unspent TxOuts)
         // getbalance and getbalance '*' 0 should return the same number.
-        int64_t nBalance = 0;
+        CBigNum nBalance(0);
         for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
         {
             const CWalletTx& wtx = (*it).second;
@@ -555,16 +552,16 @@ Value getbalance(const Array& params, bool fHelp)
                 nBalance -= r.second;
             nBalance -= allFee;
         }
-        return  ValueFromAmount(nBalance);
+        return  ValueFromBigNumAmount(nBalance);
     }
 
     accountingDeprecationCheck();
 
     string strAccount = AccountFromValue(params[0]);
 
-    int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
-
-    return ValueFromAmount(nBalance);
+    CBigNum nBalance(0);
+    nBalance = GetAccountBalance(strAccount, nMinDepth);
+    return ValueFromBigNumAmount(nBalance);
 }
 
 
@@ -649,7 +646,7 @@ Value sendfrom(const Array& params, bool fHelp)
     EnsureWalletIsUnlocked();
 
     // Check funds
-    int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
+    CBigNum nBalance = GetAccountBalance(strAccount, nMinDepth);
     if (nAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
@@ -707,7 +704,7 @@ Value sendmany(const Array& params, bool fHelp)
     EnsureWalletIsUnlocked();
 
     // Check funds
-    int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
+    CBigNum nBalance = GetAccountBalance(strAccount, nMinDepth);
     if (totalAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 

@@ -93,6 +93,11 @@ int64_t AmountFromValue(const Value& value)
     return nAmount;
 }
 
+Value ValueFromBigNumAmount(CBigNum amount)
+{
+    return (double)amount.getuint256().getdouble() / (double)COIN;
+}
+
 Value ValueFromAmount(int64_t amount)
 {
     return (double)amount / (double)COIN;
