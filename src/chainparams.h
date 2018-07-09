@@ -89,7 +89,7 @@ protected:
     std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
     int64_t nTargetSpacing;
     int64_t nTargetTimespan;
-    int nLastPoWBlock;
+    uint32_t nLastPoWBlock;
     int nStartPoSBlock;
 };
 

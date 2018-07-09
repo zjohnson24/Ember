@@ -113,9 +113,11 @@ public:
           }
         }
         nTargetTimespan = 10 * nTargetSpacing;
-        nLastPoWBlock = 380005;
+        nLastPoWBlock = 4294967294;
         nStartPoSBlock = 3805;
     }
+
+    //10*180,1800    = 10*400
 
     virtual const CBlock& GenesisBlock() const { return genesis; }
     virtual Network NetworkID() const { return CChainParams::MAIN; }
