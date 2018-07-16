@@ -1037,7 +1037,7 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
     } else if (t > future) {
         Rate = lerp(0.72L, 0.072L, quad_ease_io((t-future)/(far_future-future)));
     } else if (t > past) {
-        Rate = lerp(0.72L, 0.072LL, quad_ease_io((t-past)/(future-past)));
+        Rate = lerp(0.72L, 0.072L, quad_ease_io((t-past)/(future-past)));
     } else {
         Rate = 62.711981L;
     }
@@ -1091,7 +1091,7 @@ bool GetProofOfStakeReward(CTransaction& tx, CTxDB& txdb, int64_t nFees, int64_t
 coinbase_skip:
 
     int64_t nSubsidy = nCoinAge * 0.72 * CENT * 33 / (365 * 33 + 8);
-    bnCoinDay *= 0.72;
+    bnCoinDay *= 1;
     bnCoinDay *= 1000000;
     bnCoinDay *= 33;
     bnCoinDay /= (365 * 33 + 8);
